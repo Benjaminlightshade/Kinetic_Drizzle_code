@@ -1,0 +1,7 @@
+# git ignore file
+
+
+build/
+.devcontainer/
+.vscode/
+python/.venv
