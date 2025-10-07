@@ -12,12 +12,49 @@
 
 static TaskHandle_t xMotorTask, xComputeTask = NULL;
 
+// State machine state, controlled by the control task
+enum SystemState  {CALIBRATING, RUNNING, ERROR};
+enum SystemState state;
+
+// Compute position is the ideal position that the drops should be in. 
+struct computePositions{
+    int16_t positions[x_size][y_size];
+    SemaphoreHandle_t computePositionsMutex;
+};
+struct computePositions computePos;
+
+
+void controlTask(void *pvparameter) {
+    while (1) {
+        switch (state) {
+            case CALIBRATING:
+                // trigger SPI task to move up
+                if (calibration_done()) state = RUNNING;
+                break;
+
+            case RUNNING:
+                // normal operation
+                break;
+
+            case ERROR:
+                // stop everything
+                break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
 void computeTask(void *pvparameter){
     while(1){
         
         BaseType_t xResultCompute;
         static uint8_t status = 0;
+        int16_t positions[x_size][y_size]; 
+
+
+
         // Calibrate the drops
+        // TBC: to be handled inside computenextpositions
         if(status == 0){
             calibratePositions();
             status++; 
@@ -25,8 +62,8 @@ void computeTask(void *pvparameter){
 
 
         // Compute the next positions for the drops in the pattern
-        status = computeNextPositions();
-        xResultCompute = ulTaskNotifyTakeIndexed(0, pdTRUE, 10/portTICK_PERIOD_MS);
+        // TBC: to give positions array to the compute function.
+        status = computeNextPositions(positions);
 
         // Write the next positions only if motor task is not working on it
         if (xResultCompute != 0){
@@ -59,11 +96,12 @@ void actuatorMotorTask(void *pvparameter){
     }
 }
 
+void setup(){
 
-void app_main(void)
-{
-
+    // Startup config
+    state = CALIBRATING;
     esp_err_t ret;
+
     // Initalize the SPI connection
     ret = init_spi();
     if (ret != ESP_OK) {
@@ -71,27 +109,33 @@ void app_main(void)
         return;
     }
     
+    // Initialize the GPIO pins
     ret = init_gpio();
     if (ret != ESP_OK) {
         ESP_LOGE("Main", "Failed to initialize SPI");
         return;
     }
 
-    init_main_arrs();
+    // Initialize the compute positions struct
+    for (int x = 0; x < x_size; x++){
+        for (int y = 0; y < y_size; y++){
+            computePos.positions[x][y] = 0;
+        }
+    }
+    computePos.computePositionsMutex = xSemaphoreCreateMutex();
+
+
+}
+
+void app_main(void)
+{
+    // Initialize variables and peripherals
+    setup();
 
     // Create the motor and compute tasks
-    xTaskCreate(actuatorMotorTask, "Motor", 2048, NULL, 1, &xMotorTask);
-    xTaskCreate(computeTask, "Computing", 2048, NULL, 1, &xComputeTask);
-
-    // Give the first notification to start the compute task rolling
-    xTaskNotifyGiveIndexed(xComputeTask, 0);
-
-
-    #ifdef var
-        
-    #endif
-    // xTaskCreate(testTask, "Test", 2048, NULL, 1, &xTestTask);
-
+    xTaskCreate(actuatorMotorTask, "Motor", 2048, NULL, 3, &xMotorTask);
+    xTaskCreate(computeTask, "Computing", 2048, NULL, 2, &xComputeTask);
+    xTaskCreate(controlTask, "Control", 2048, NULL, 1, NULL);
 
     
 }
