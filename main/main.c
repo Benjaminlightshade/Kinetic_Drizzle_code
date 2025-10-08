@@ -4,11 +4,11 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_err.h"
-#include "driver/spi_master.h"
 #include "esp_timer.h"
 
 #include "config.h"
-#include "main_tasks.h"
+#include "actuation.h"
+#include "rain_compute.h"
 
 static TaskHandle_t xMotorTask, xComputeTask = NULL;
 
@@ -23,7 +23,7 @@ struct computePositions{
 };
 struct computePositions computePos;
 
-
+// TBC : control task transitions and uses
 void controlTask(void *pvparameter) {
     while (1) {
         switch (state) {
@@ -48,8 +48,8 @@ void computeTask(void *pvparameter){
     while(1){
         
         BaseType_t xResultCompute;
-        static uint8_t status = 0;
-        int16_t positions[x_size][y_size]; 
+        Ret_t status;
+        int positions[x_size][y_size]; 
 
 
 
@@ -60,7 +60,7 @@ void computeTask(void *pvparameter){
             status++; 
         }
 
-
+        bool 
         // Compute the next positions for the drops in the pattern
         // TBC: to give positions array to the compute function.
         status = computeNextPositions(positions);

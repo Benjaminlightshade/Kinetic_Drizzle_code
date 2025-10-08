@@ -1,12 +1,63 @@
-#include "rain_types.h"
+#include "rain_compute.h"
 #include "helper_functions.h"
 #include "config.h"
+#include "esp_timer.h"
+#include "stdint.h"
+#include "esp_log.h"
+
 
 #define PI 3.1412
 
+// Task Functions
+
+Ret_t computeNextPositions(int iPositions[x_size][y_size]){
+  
+  // Run sequence
+  // Input for each sequence is time
+
+  // TODO: create the status logic and updates
+
+  Ret_t status; 
+  
+  uint64_t sequenceStartTime;
+  uint64_t sequenceTime;
+
+  // Todo : use an array of function points to select which sequence to run.
+  // This will reduce the amount of code needed to compute the next positions. 
+
+  // Run the first sequence
+  ESP_LOGI("Sequence", "Starting first sequence");
+  sequenceStartTime = esp_timer_get_time();
+  sequenceTime = sequenceStartTime;
+  vTaskDelay(1000/portTICK_PERIOD_MS);
+
+  // Create test sequence
+  ESP_LOGI("Sequence", "Test sequence start");
+  testMove(sequenceTime, iPositions);
+  ESP_LOGI("Sequence", "Test sequence complete");
+  
+  // while(SimpleWaveSequence(sequenceTime, *tmpNextPositions, x_size, y_size)){  
+  //     sequenceTime = esp_timer_get_time() - sequenceStartTime;
+  //     xResultCompute = ulTaskNotifyTakeIndexed(0, pdTRUE, 10/portTICK_PERIOD_MS);
+      
+  //     if (xResultCompute == 0){
+  //         ESP_LOGI("Sequence", "Motor task is not ready. Computing next cycle."); 
+  //         continue;
+  //     } else {
+  //         memcpy(nextPositions, tmpNextPositions, sizeof(nextPositions));
+  //         xTaskNotifyGiveIndexed(xMotorTask, 0);
+  //     }
+  // }
+
+  ESP_LOGI("Sequence", "First sequence complete");
+
+  return status; 
+
+}
+
 // Drop starts at amplitude = 0  when it is on top. max amplitude is provided in amplitude parameter
 
-bool testMove(int64_t time, int16_t nextPositions[x_size][y_size]){
+bool testMove(int64_t time, int nextPositions[x_size][y_size]){
 
 	bool sequenceComplete = false;
 	
@@ -19,6 +70,7 @@ bool testMove(int64_t time, int16_t nextPositions[x_size][y_size]){
 	return true;
     
 }
+
 /*
 // Sine wave from left to right
 bool SimpleWaveSequence(double time, int* positions, int xSize, int ySize) {

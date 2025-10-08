@@ -1,5 +1,5 @@
-#ifndef MAIN_TASKS_H
-#define MAIN_TASKS_H
+#ifndef ACTUATION_H
+#define ACTUATION_H
 
 #include "esp_log.h"
 #include "esp_err.h"
@@ -16,7 +16,6 @@ esp_err_t init_gpio();
 
 // Task functions
 
-uint8_t computeNextPositions();
 
 void writeNextPositions();
 

@@ -15,15 +15,18 @@
 #define min_drop_pos -10000
 
 // Pins //
-#define rclk_pin GPIO_NUM_22                    // RCLK is the latch pin
+#define rclk_pin 22                   // RCLK is the latch pin
 #define rclk_pin_bitmask (1ULL<<rclk_pin)
 
-#define PIN_NUM_MISO GPIO_NUM_12
-#define PIN_NUM_MOSI GPIO_NUM_13
-#define PIN_NUM_CLK  GPIO_NUM_14
+#define PIN_NUM_MISO 12
+#define PIN_NUM_MOSI 13
+#define PIN_NUM_CLK  14
 
 #define spi_device_hostid SPI2_HOST
 
+typedef enum {
+    SUCCESS = 0, 
+    ERROR = 1
+} Ret_t; 
 
-
-#endif 
+#endif

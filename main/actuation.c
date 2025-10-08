@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "main_tasks.h"
+#include "actuation.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_timer.h"
+#include "esp_log.h"
 
 #include "helper_functions.h"
-#include "rain_types.h"
+#include "rain_compute.h"
 #include "config.h"
 
 ////// Variables /////
@@ -20,18 +21,6 @@ int16_t nextPositions[x_size][y_size];
 spi_device_handle_t spi_handle = NULL;
 esp_err_t ret;
 
-
-///// Main init functions /////
-
-// Initializes the global arrays to the starting value
-void init_main_arrs(){
-    for ( int i = 0; i < x_size; i++){
-        for ( int j = 0; j < y_size; j++){
-            positions[i][j] = start_drop_pos;
-            nextPositions[i][j] = start_drop_pos;
-        }
-    }
-}
 
 // Function to init the SPI bus and device
 esp_err_t init_spi() {
@@ -110,48 +99,7 @@ esp_err_t spi_send_data(spi_device_handle_t spi, const unsigned char *data, size
 
 // Task functions //
 
-uint8_t computeNextPositions(uint8_t status){
-  
-  // Run sequence
-  // Input for each sequence is time
 
-  // TODO: create the status logic and updates
-  
-  uint64_t sequenceStartTime;
-  uint64_t sequenceTime;
-
-  // Todo : use an array of function points to select which sequence to run.
-  // This will reduce the amount of code needed to compute the next positions. 
-
-  // Run the first sequence
-  ESP_LOGI("Sequence", "Starting first sequence");
-  sequenceStartTime = esp_timer_get_time();
-  sequenceTime = sequenceStartTime;
-  vTaskDelay(1000/portTICK_PERIOD_MS);
-
-  // Create test sequence
-  ESP_LOGI("Sequence", "Test sequence start");
-  testMove(sequenceTime, nextPositions);
-  ESP_LOGI("Sequence", "Test sequence complete");
-  
-  // while(SimpleWaveSequence(sequenceTime, *tmpNextPositions, x_size, y_size)){  
-  //     sequenceTime = esp_timer_get_time() - sequenceStartTime;
-  //     xResultCompute = ulTaskNotifyTakeIndexed(0, pdTRUE, 10/portTICK_PERIOD_MS);
-      
-  //     if (xResultCompute == 0){
-  //         ESP_LOGI("Sequence", "Motor task is not ready. Computing next cycle."); 
-  //         continue;
-  //     } else {
-  //         memcpy(nextPositions, tmpNextPositions, sizeof(nextPositions));
-  //         xTaskNotifyGiveIndexed(xMotorTask, 0);
-  //     }
-  // }
-
-  ESP_LOGI("Sequence", "First sequence complete");
-
-  return status; 
-
-}
 
 
 // Moves from postions to nextPositions through stepping as needed

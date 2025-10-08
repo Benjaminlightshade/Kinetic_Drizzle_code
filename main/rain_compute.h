@@ -1,12 +1,16 @@
-#ifndef Rain_Types_H
-#define Rain_Types_H
+#ifndef RAIN_COMPUTE_H
+#define RAIN_COMPUTE_H
 
-#include "inttypes.h"
 #include "config.h"
+#include "stdint.h"
+
+// Task functions
+
+Ret_t computeNextPositions(int iPositions[x_size][y_size]);
 
 // Types of rain sequence
 
-bool testMove(int64_t time, int16_t positions[x_size][y_size]);
+bool testMove(int64_t time, int positions[x_size][y_size]);
 
 // bool SimpleWaveSequence(double time, int *positions, int x, int y);
 
