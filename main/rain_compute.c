@@ -8,16 +8,16 @@
 
 #define PI 3.1412
 
-// Task Functions
+// Task Functions //
 
-Ret_t computeNextPositions(int iPositions[x_size][y_size]){
+Ret_t computeNextPositions(int iPositions[x_size][y_size], SystemState state){
   
   // Run sequence
   // Input for each sequence is time
 
   // TODO: create the status logic and updates
 
-  Ret_t status; 
+  Ret_t status = SUCCESS;
   
   uint64_t sequenceStartTime;
   uint64_t sequenceTime;
@@ -54,6 +54,9 @@ Ret_t computeNextPositions(int iPositions[x_size][y_size]){
   return status; 
 
 }
+
+
+// Sequences //
 
 // Drop starts at amplitude = 0  when it is on top. max amplitude is provided in amplitude parameter
 

@@ -10,33 +10,24 @@
 #include "actuation.h"
 #include "rain_compute.h"
 
-static TaskHandle_t xMotorTask, xComputeTask = NULL;
-
-// State machine state, controlled by the control task
-enum SystemState  {CALIBRATING, RUNNING, ERROR};
-enum SystemState state;
-
-// Compute position is the ideal position that the drops should be in. 
-struct computePositions{
-    int16_t positions[x_size][y_size];
-    SemaphoreHandle_t computePositionsMutex;
-};
-struct computePositions computePos;
+// Global variables //
+TaskHandle_t xMotorTask, xComputeTask = NULL;
+SystemState sys_state;
+ComputePositions computePos;
 
 // TBC : control task transitions and uses
 void controlTask(void *pvparameter) {
     while (1) {
-        switch (state) {
-            case CALIBRATING:
+        switch (sys_state) {
+            case CALIBRATE_STATE:
                 // trigger SPI task to move up
-                if (calibration_done()) state = RUNNING;
                 break;
 
-            case RUNNING:
+            case RUNNING_STATE:
                 // normal operation
                 break;
 
-            case ERROR:
+            case ERROR_STATE:
                 // stop everything
                 break;
         }
@@ -47,26 +38,19 @@ void controlTask(void *pvparameter) {
 void computeTask(void *pvparameter){
     while(1){
         
-        BaseType_t xResultCompute;
+        BaseType_t xResultCompute = pdTRUE;
         Ret_t status;
         int positions[x_size][y_size]; 
 
-
-
-        // Calibrate the drops
-        // TBC: to be handled inside computenextpositions
-        if(status == 0){
-            calibratePositions();
-            status++; 
-        }
-
-        bool 
         // Compute the next positions for the drops in the pattern
         // TBC: to give positions array to the compute function.
-        status = computeNextPositions(positions);
+        status = computeNextPositions(positions, sys_state);
 
         // Write the next positions only if motor task is not working on it
-        if (xResultCompute != 0){
+
+
+
+        if (xResultCompute != pdFALSE){
             writeNextPositions();
             xTaskNotifyGiveIndexed(xMotorTask, 0);
         } else {
@@ -99,7 +83,6 @@ void actuatorMotorTask(void *pvparameter){
 void setup(){
 
     // Startup config
-    state = CALIBRATING;
     esp_err_t ret;
 
     // Initalize the SPI connection
@@ -113,6 +96,12 @@ void setup(){
     ret = init_gpio();
     if (ret != ESP_OK) {
         ESP_LOGE("Main", "Failed to initialize SPI");
+        return;
+    }
+
+    
+    if(config_init() != SUCCESS){
+        ESP_LOGE("Main", "Failed to initialize configuration");
         return;
     }
 

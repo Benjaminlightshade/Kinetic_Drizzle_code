@@ -24,9 +24,29 @@
 
 #define spi_device_hostid SPI2_HOST
 
+// Global vairables // 
+
+// Compute position is the ideal position that the drops should be in. 
+typedef struct {
+    int positions[x_size][y_size];
+    SemaphoreHandle_t computePositionsMutex;
+} ComputePositions; 
+
+
+// Return values // 
 typedef enum {
     SUCCESS = 0, 
     ERROR = 1
 } Ret_t; 
+
+// State machine state, controlled by the control task
+typedef enum{
+    CALIBRATE_STATE, 
+    RUNNING_STATE, 
+    ERROR_STATE
+} SystemState;
+
+// Config functions //
+Ret_t config_init(void);
 
 #endif

@@ -4,9 +4,12 @@
 #include "config.h"
 #include "stdint.h"
 
+
+
+
 // Task functions
 
-Ret_t computeNextPositions(int iPositions[x_size][y_size]);
+Ret_t computeNextPositions(int iPositions[x_size][y_size], SystemState state);
 
 // Types of rain sequence
 
