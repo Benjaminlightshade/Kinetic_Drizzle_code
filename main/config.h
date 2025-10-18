@@ -2,6 +2,8 @@
 #define CONFIG_H
 
 #include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 // Parameters //
 #define x_size 4
@@ -35,8 +37,8 @@ typedef struct {
 
 // Return values // 
 typedef enum {
-    SUCCESS = 0, 
-    ERROR = 1
+    ERROR = 0, 
+    SUCCESS = 1
 } Ret_t; 
 
 // State machine state, controlled by the control task
@@ -45,8 +47,5 @@ typedef enum{
     RUNNING_STATE, 
     ERROR_STATE
 } SystemState;
-
-// Config functions //
-Ret_t config_init(void);
 
 #endif

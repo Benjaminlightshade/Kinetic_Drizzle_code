@@ -6,6 +6,8 @@
 #include "esp_err.h"
 #include "esp_timer.h"
 
+#include "string.h"
+
 #include "config.h"
 #include "actuation.h"
 #include "rain_compute.h"
@@ -38,25 +40,33 @@ void controlTask(void *pvparameter) {
 void computeTask(void *pvparameter){
     while(1){
         
-        BaseType_t xResultCompute = pdTRUE;
-        Ret_t status;
+        // Temporary positions array used for computation
         int positions[x_size][y_size]; 
+        memset(positions, 0, sizeof(positions));
 
         // Compute the next positions for the drops in the pattern
-        // TBC: to give positions array to the compute function.
-        status = computeNextPositions(positions, sys_state);
-
-        // Write the next positions only if motor task is not working on it
-
-
-
-        if (xResultCompute != pdFALSE){
-            writeNextPositions();
-            xTaskNotifyGiveIndexed(xMotorTask, 0);
-        } else {
-            ESP_LOGI("Sequence", "Motor task is not ready. Computing next cycle."); 
+        if (computeNextPositions(positions, sys_state) != SUCCESS){
+            // Handle error
+            ESP_LOGE("ComputeTask", "Failed to compute next positions");
             continue;
         }
+
+        // Write the new positions to the shared ComputePositions struct
+        if(xSemaphoreTake(computePos.computePositionsMutex, pdMS_TO_TICKS(100)) == pdTRUE){
+            for(int x = 0; x < x_size; x++){
+                for(int y = 0; y < y_size; y++){
+                    computePos.positions[x][y] = positions[x][y];
+                }
+            }
+        } else {
+            ESP_LOGE("ComputeTask", "Failed to take computePositionsMutex");
+            continue;
+        }
+
+        xSemaphoreGive(computePos.computePositionsMutex);
+
+        // Notify the motor task that new positions are ready
+        xTaskNotifyGiveIndexed(xMotorTask, 0);
 
     }
 }
@@ -64,18 +74,12 @@ void computeTask(void *pvparameter){
 void actuatorMotorTask(void *pvparameter){
     while(1){
 
-        // Wait for a task notification from the compute task
-        BaseType_t xResultMotor;
-        xResultMotor = ulTaskNotifyTakeIndexed(0, pdTRUE, 5000/portTICK_PERIOD_MS);
-
-        // No notification received within the timeout period, go back to waiting. 
-        if (xResultMotor == 0){
-            ESP_LOGI("Sequence", "Compute task is not ready."); 
+        // Wait for notification from compute task 
+        if (ulTaskNotifyTakeIndexed(0, pdTRUE, 5000/portTICK_PERIOD_MS) == pdFALSE){
+            ESP_LOGI("Sequence", "No notification received from compute task."); 
             continue;
         }
 
-        // If notification received, notify the compute task and send steps.
-        xTaskNotifyGiveIndexed(xComputeTask, 0);
         sendSteps();
     }
 }
@@ -99,20 +103,17 @@ void setup(){
         return;
     }
 
-    
-    if(config_init() != SUCCESS){
-        ESP_LOGE("Main", "Failed to initialize configuration");
-        return;
-    }
-
     // Initialize the compute positions struct
     for (int x = 0; x < x_size; x++){
         for (int y = 0; y < y_size; y++){
-            computePos.positions[x][y] = 0;
+            computePos.positions[x][y] = start_drop_pos;
         }
     }
+
     computePos.computePositionsMutex = xSemaphoreCreateMutex();
 
+    // Initialize the system state 
+    sys_state = CALIBRATE_STATE;
 
 }
 
