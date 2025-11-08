@@ -14,16 +14,15 @@
 ////// Variables /////
 
 // Positions hold the current positions of the drops 
-// nextPositions is the target positon of the job in the next cycle
 
-int16_t positions[x_size][y_size]; 
-int16_t nextPositions[x_size][y_size]; 
+static int positions[x_size][y_size]; 
 spi_device_handle_t spi_handle = NULL;
-esp_err_t ret;
 
+////// Utility functions /////
 
 // Function to init the SPI bus and device
 esp_err_t init_spi() {
+  esp_err_t ret = ESP_OK;
   spi_bus_config_t buscfg = {
       .mosi_io_num = PIN_NUM_MOSI,
       .miso_io_num = -1,
@@ -60,11 +59,14 @@ esp_err_t init_spi() {
 
 // Function to init the gpio pins that will latch the shift registers
 esp_err_t init_gpio(){
+  esp_err_t ret = ESP_OK;
   gpio_config_t io_conf = {};
+
   io_conf.pin_bit_mask = rclk_pin_bitmask;
   io_conf.mode = GPIO_MODE_OUTPUT;
   io_conf.pull_down_en = 1;
   ret = gpio_config(&io_conf);
+
   // ret = gpio_set_direction(latch_pin, GPIO_MODE_OUTPUT);
   if (ret != ESP_OK) {
     ESP_LOGI("SPI", "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
@@ -74,19 +76,14 @@ esp_err_t init_gpio(){
 }
 
 // Function to send data using SPI to the shift registers
-esp_err_t spi_send_data(spi_device_handle_t spi, const unsigned char *data, size_t length) {
+esp_err_t spi_send_data(spi_device_handle_t spi, const unsigned char* data, size_t length) {
+  
   spi_transaction_t t;
+  esp_err_t ret;
+
   memset(&t, 0, sizeof(t));  // Zero out the transaction
   t.length = length * 8;     // Length is in bits
   t.tx_buffer = data;        // Data to be sent
-
-  //////////// TEST///////////////
-  // unsigned char *byte_ptr;
-  // for(int i = 0; i < length; i++){
-  //   byte_ptr = data + i;
-  //   ESP_LOGI("test", "%u in pos %d", *byte_ptr, i);
-  // }
-  //////////// TEST///////////////
 
   ret = spi_device_transmit(spi, &t);
   if (ret != ESP_OK) {
@@ -97,67 +94,116 @@ esp_err_t spi_send_data(spi_device_handle_t spi, const unsigned char *data, size
 }
 
 
-// Task functions //
+////// Task functions ///////
 
+Ret_t compute_to_move(int* target_positions[x_size][y_size], int* steps[x_size][y_size]){
+  
+  Ret_t ret = SUCCESS;
+  int steps[x_size][y_size] = {0};
 
+  calculate_move(target_positions, steps);
 
+  send_steps(steps); 
+
+  return ret; 
+
+}
+
+void calculate_move(int* target_positions[x_size][y_size], int* steps[x_size][y_size]){
+
+  // Calculate the steps needed for each drop to move to the next position
+
+  for (int x = 0; x < x_size; x++){
+    for (int y = 0; y < y_size; y++){
+      steps[x][y] = target_positions[x][y] - positions[x][y];
+    }
+  }
+}
 
 // Moves from postions to nextPositions through stepping as needed
-void sendSteps(){
+Ret_t send_steps(int* steps[x_size][y_size]){
 
-  bool incomplete = true;
+  // Send the steps to the shift registers to move the motors accordingly
+  Ret_t ret = SUCCESS;
+  unsigned char shiftRegisterOutput[number_of_boards];
+
+  memset(&shiftRegisterOutput, '\0', sizeof(shiftRegisterOutput));    // '\0' is 00000000. 
+
   int stepBit = 0;
   int dirBit = 0;
   int bitSelect = 0;
   unsigned char *pcbRegs;
-  int numberOfBoards = x_size*y_size/2/2;
-  unsigned char shiftRegisterOutput[numberOfBoards];
+  int64_t step_time_elapsed = 0;
 
-  static int64_t step_time_elapsed = 0;
-  
-  // Init the memory and start a timer
-  // '\0' is 00000000. 
-  memset(&shiftRegisterOutput, '\0', sizeof(shiftRegisterOutput));
+  bool incomplete = true;
 
-
-  // Find the number of steps and direction of steps for each drop 
-  // Write the direction and number of steps to the correct binary values in the 
-  // shift register output array.
-  while(incomplete){
+  while (incomplete) {
     incomplete = false;
 
-  // To do: The following can be made into functions instead
-    for (int x = 0; x < x_size; x++){
-      for (int y = 0; y < y_size; y++){
-        if (nextPositions[x][y] > positions[x][y]){
-          pcbRegs = &shiftRegisterOutput[(numberOfBoards - 1) - ((x/2)+(y/2))];
-          stepBit = 1;
-          dirBit = 1;
-          bitSelect = 7 - ((x%2)*2) - ((y%2)*4);
-          setBit(pcbRegs, bitSelect, dirBit);
-          setBit(pcbRegs, bitSelect-1, stepBit);
-          positions[x][y] = positions[x][y] + 1;
-          incomplete = true;
-          ESP_LOGI("test", "bit select %d and reg %u", bitSelect, *pcbRegs);
+    // Write the bits into the collection(s) of bytes
+    for (int x = 0; x < x_size; x++) {
+      for (int y = 0; y < y_size; y++) {
 
-        }else if (nextPositions[x][y] < positions[x][y]){
-          pcbRegs = &shiftRegisterOutput[(numberOfBoards - 1) - ((x/2)+(y/2))];
-          stepBit = 1;
-          dirBit = 0;
-          bitSelect = 7 - ((x%2)*2) - ((y%2)*4);
-          setBit(pcbRegs, bitSelect, dirBit);
-          setBit(pcbRegs, bitSelect-1, stepBit);
-          // bitSelect = (x%2)*2 + (y%2)*4;
-          // _setBit(pcbRegs, bitSelect, dirBit);
-          // _setBit(pcbRegs, bitSelect+1, stepBit);
-          positions[x][y] = positions[x][y] -1;
-          incomplete = true;
-          ESP_LOGI("test2", "bit select %d and reg %u", bitSelect, *pcbRegs);
+        // Formula for selecting the correct step and dir bit in the collection
+        stepBit = 2 * (2 * (x % 2) + (y % 2)) + 1;
+        dirBit = 2 * (2 * (x % 2) + (y % 2));
 
+        if(steps[x][y] > 0){
+          steps[x][y] = steps[x][y] - 1;
+          incomplete = true;
+          bitWrite(shiftRegisterOutput[(number_of_boards - 1) - ((x/2)+(y/2))], stepBit, 1);
+          bitWrite(shiftRegisterOutput[(number_of_boards - 1) - ((x/2)+(y/2))], dirBit, 0);
         }
+        
+        if(steps[x][y] < 0){
+          steps[x][y] = steps[x][y] + 1;
+          incomplete = true;
+          bitWrite(shiftRegisterOutput[(number_of_boards - 1) - ((x/2)+(y/2))], stepBit, 1);
+          bitWrite(shiftRegisterOutput[(number_of_boards - 1) - ((x/2)+(y/2))], dirBit, 1);
+        }
+
       }
     }
 
+
+
+  } 
+
+
+  
+
+/*
+  for (int x = 0; x < x_size; x++){
+    for (int y = 0; y < y_size; y++){
+      if (new_positions[x][y] > positions[x][y]){
+        pcbRegs = &shiftRegisterOutput[(numberOfBoards - 1) - ((x/2)+(y/2))];
+        stepBit = 1;
+        dirBit = 1;
+        bitSelect = 7 - ((x%2)*2) - ((y%2)*4);
+        setBit(pcbRegs, bitSelect, dirBit);
+        setBit(pcbRegs, bitSelect-1, stepBit);
+        positions[x][y] = positions[x][y] + 1;
+        incomplete = true;
+        ESP_LOGI("test", "bit select %d and reg %u", bitSelect, *pcbRegs);
+
+      }else if (new_positions[x][y] < positions[x][y]){
+        pcbRegs = &shiftRegisterOutput[(numberOfBoards - 1) - ((x/2)+(y/2))];
+        stepBit = 1;
+        dirBit = 0;
+        bitSelect = 7 - ((x%2)*2) - ((y%2)*4);
+        setBit(pcbRegs, bitSelect, dirBit);
+        setBit(pcbRegs, bitSelect-1, stepBit);
+        positions[x][y] = positions[x][y] -1;
+        incomplete = true;
+        ESP_LOGI("test2", "bit select %d and reg %u", bitSelect, *pcbRegs);
+
+      }
+    }
+  }
+*/
+  while(incomplete){
+    incomplete = false;
+    
     // Send the output to the shift registers using SPI
     if(incomplete == true){
       ret = spi_send_data(spi_handle, shiftRegisterOutput, sizeof(shiftRegisterOutput));
@@ -171,10 +217,6 @@ void sendSteps(){
         // Log the time at this latch
         step_time_elapsed = esp_timer_get_time();
       }
-    }
-
-    if (ret != ESP_OK) {
-        ESP_LOGE("Main", "Send steps unsuccessful");
     }
 
   }
@@ -203,6 +245,24 @@ void sendSteps(){
     memset(new_tag, '\0', 30);
     memset(mystr, '\0', sizeof(mystr));
   }    
+
+}
+
+// Embeds the step in the bits of the corresponding shift register bytes
+Ret_t set_shift_registers(){
+
+}
+
+Ret_t calibration(){
+
+	Ret_t status = SUCCESS;
+
+
+
+	// TBC: Calibration logic here
+
+
+	return status; 
 
 }
 

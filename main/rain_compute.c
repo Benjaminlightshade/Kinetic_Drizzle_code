@@ -6,7 +6,6 @@
 #include "esp_log.h"
 
 
-#define PI 3.1412
 
 // Task Functions //
 

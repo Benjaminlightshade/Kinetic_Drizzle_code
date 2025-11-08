@@ -2,18 +2,19 @@
 #define RAIN_COMPUTE_H
 
 #include "config.h"
-#include "stdint.h"
 
 
 
 
 // Task functions
 
-Ret_t computeNextPositions(int iPositions[x_size][y_size], SystemState state);
+Ret_t computeNextPositions(int* pPositions, SystemState state);
+
+Ret_t calibrationSequence(ComputePositions* computePos);
 
 // Types of rain sequence
 
-bool testMove(int64_t time, int positions[x_size][y_size]);
+// bool testMove(int64_t time, int positions[x_size][y_size]);
 
 // bool SimpleWaveSequence(double time, int *positions, int x, int y);
 

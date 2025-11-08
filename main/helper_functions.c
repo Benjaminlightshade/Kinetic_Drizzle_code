@@ -7,16 +7,9 @@
 #include "esp_err.h"
 
 
-// Forward declare private functions
 
 
 
-
-
-
-void calibratePositions(){
-    
-}
 
 
 // Helper functions for the main loop

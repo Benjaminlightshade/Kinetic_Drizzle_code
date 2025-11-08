@@ -15,7 +15,7 @@
 // Global variables //
 TaskHandle_t xMotorTask, xComputeTask = NULL;
 SystemState sys_state;
-ComputePositions computePos;
+ComputePositions computePos;    
 
 // TBC : control task transitions and uses
 void controlTask(void *pvparameter) {
@@ -40,47 +40,68 @@ void controlTask(void *pvparameter) {
 void computeTask(void *pvparameter){
     while(1){
         
+        // Calibration is handled by the actuation task directly
+        if (sys_state == CALIBRATE_STATE){
+            continue;
+        }
+
+
         // Temporary positions array used for computation
         int positions[x_size][y_size]; 
         memset(positions, 0, sizeof(positions));
 
         // Compute the next positions for the drops in the pattern
-        if (computeNextPositions(positions, sys_state) != SUCCESS){
+        if (computeNextPositions((int *)positions, sys_state) != SUCCESS){
             // Handle error
             ESP_LOGE("ComputeTask", "Failed to compute next positions");
             continue;
         }
 
-        // Write the new positions to the shared ComputePositions struct
+        // Write the new positions to the shared ComputePositions struct after computation
         if(xSemaphoreTake(computePos.computePositionsMutex, pdMS_TO_TICKS(100)) == pdTRUE){
+            
             for(int x = 0; x < x_size; x++){
                 for(int y = 0; y < y_size; y++){
                     computePos.positions[x][y] = positions[x][y];
                 }
             }
+
+            // Release the mutex
+            xSemaphoreGive(computePos.computePositionsMutex);
+            
+            // // Notify the motor task that new positions are ready
+            // xTaskNotifyGiveIndexed(xMotorTask, 0);
+
         } else {
             ESP_LOGE("ComputeTask", "Failed to take computePositionsMutex");
             continue;
         }
-
-        xSemaphoreGive(computePos.computePositionsMutex);
-
-        // Notify the motor task that new positions are ready
-        xTaskNotifyGiveIndexed(xMotorTask, 0);
-
     }
 }
 
 void actuatorMotorTask(void *pvparameter){
     while(1){
 
-        // Wait for notification from compute task 
-        if (ulTaskNotifyTakeIndexed(0, pdTRUE, 5000/portTICK_PERIOD_MS) == pdFALSE){
-            ESP_LOGI("Sequence", "No notification received from compute task."); 
+        if (sys_state == CALIBRATE_STATE){
+            calibration();
             continue;
         }
 
-        sendSteps();
+        // // Wait for notification from compute task 
+        // if (ulTaskNotifyTakeIndexed(0, pdTRUE, 5000/portTICK_PERIOD_MS) == pdFALSE){
+        //     ESP_LOGI("Sequence", "No notification received from compute task."); 
+        //     continue;
+        // }
+        
+        // Take the mutex to access the computed positions
+        if(xSemaphoreTake(computePos.computePositionsMutex, 100/portTICK_PERIOD_MS) == pdTRUE){
+            
+            // Run the actuation of the motors for the given positions
+            compute_to_move(&computePos.positions);
+            xSemaphoreGive(computePos.computePositionsMutex);
+
+        };
+
     }
 }
 
@@ -103,16 +124,15 @@ void setup(){
         return;
     }
 
-    // Initialize the compute positions struct
+    // Initialize the compute positions and its mutex
     for (int x = 0; x < x_size; x++){
         for (int y = 0; y < y_size; y++){
             computePos.positions[x][y] = start_drop_pos;
         }
     }
-
     computePos.computePositionsMutex = xSemaphoreCreateMutex();
 
-    // Initialize the system state 
+    // Initialize the system state to calibrate 
     sys_state = CALIBRATE_STATE;
 
 }

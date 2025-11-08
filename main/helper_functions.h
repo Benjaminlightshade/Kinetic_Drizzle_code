@@ -14,9 +14,6 @@
 
 // void interruptFunc();
 
-void calibratePositions();
-
-
 // Helper functions for the main loop
 
 void zeroPositionArrays(int *positions, int *nextPositions, int xsize, int ysize);

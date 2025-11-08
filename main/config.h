@@ -13,7 +13,7 @@
 
 // Constants //
 #define max_drop_pos 10000
-#define start_drop_pos 0
+#define start_drop_pos 0                        // Drops will start at position 0, when they are at the top
 #define min_drop_pos -10000
 
 // Pins //
@@ -26,9 +26,15 @@
 
 #define spi_device_hostid SPI2_HOST
 
+#define PI 3.1412
+
 // Global vairables // 
 
-// Compute position is the ideal position that the drops should be in. 
+/* 
+Compute position is the ideal position that the drops should be in. 
+Contains a mutex for safe access across tasks.
+*/
+
 typedef struct {
     int positions[x_size][y_size];
     SemaphoreHandle_t computePositionsMutex;

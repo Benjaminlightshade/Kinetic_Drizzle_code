@@ -19,13 +19,13 @@ esp_err_t init_gpio();
 
 void writeNextPositions();
 
-void sendSteps();
+Ret_t send_steps(ComputePositions* computePos);
 
 // Core functions
 esp_err_t spi_send_data(spi_device_handle_t spi, const unsigned char *data, size_t length);
 
 
-
+Ret_t calibrate();
 
 
 #endif
