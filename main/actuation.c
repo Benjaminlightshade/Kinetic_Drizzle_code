@@ -15,8 +15,12 @@
 
 // Positions hold the current positions of the drops 
 
-static int positions[x_size][y_size]; 
+static int actual_positions[x_size][y_size]; 
 spi_device_handle_t spi_handle = NULL;
+
+// Board order for shift register output. 
+unsigned int board_order[number_of_boards] = {0,1,2,3,4,5,6,7}; // Order of the boards for shift register output
+// Continue from here: the board order needs to be ingrained into actuation movement. 
 
 ////// Utility functions /////
 
@@ -76,7 +80,7 @@ esp_err_t init_gpio(){
 }
 
 // Function to send data using SPI to the shift registers
-esp_err_t spi_send_data(spi_device_handle_t spi, const unsigned char* data, size_t length) {
+esp_err_t spi_send_data(spi_device_handle_t spi, const uint8_t* data, size_t length) {
   
   spi_transaction_t t;
   esp_err_t ret;
@@ -93,133 +97,156 @@ esp_err_t spi_send_data(spi_device_handle_t spi, const unsigned char* data, size
   return ret;
 }
 
-
 ////// Task functions ///////
 
-Ret_t compute_to_move(int* target_positions[x_size][y_size], int* steps[x_size][y_size]){
+Ret_t compute_to_move(int* target_positions[x_size][y_size]){
   
   Ret_t ret = SUCCESS;
-  int steps[x_size][y_size] = {0};
+  Ret_t steps_cleared = INCOMPLETE;
 
-  calculate_move(target_positions, steps);
+  uint8_t shiftRegisterOutput[number_of_boards];
 
-  send_steps(steps); 
+
+  // Set shift register output to zero
+  memset(&shiftRegisterOutput, '\0', sizeof(shiftRegisterOutput));    // '\0' is 00000000. 
+
+  // While loop to send all the steps needed to move to the target positions
+  while (steps_cleared == INCOMPLETE){
+    // In each loop, each motor can only move 1 step. 
+    
+    //Get the next steps for all motors, into bits of the shift register output
+    steps_cleared = get_steps_to_bytes(target_positions, shiftRegisterOutput, number_of_boards);
+
+    // Check the time since the previous move
+    while (move_timer_check() != SUCCESS){
+      ESP_LOGI("Actuation", "Waiting for min time to pass");
+    }
+
+    // Send the output to the shift registers using SPI
+    ret = spi_send_data(spi_handle, shiftRegisterOutput, number_of_boards);
+
+    if (ret == ESP_OK) {
+      // Update the new actual positions upon successful SPI transmission
+      update_actual_positions(target_positions);
+      latch_registers(); 
+
+    } else {
+      ESP_LOGE("Actuation", "Failed to send SPI data");
+      ret = ERROR;
+      return ret;
+    }
+  }
 
   return ret; 
 
 }
 
-void calculate_move(int* target_positions[x_size][y_size], int* steps[x_size][y_size]){
+// Function that takes the target positions and calculates 1 step to take for each motor. 
+// Outputs the bytes needed to be sent to SPI to move the motors. 
+Ret_t get_steps_to_bytes(int* target_positions[x_size][y_size], uint8_t *byte_arr, unsigned int byte_arr_size){
 
-  // Calculate the steps needed for each drop to move to the next position
-
-  for (int x = 0; x < x_size; x++){
-    for (int y = 0; y < y_size; y++){
-      steps[x][y] = target_positions[x][y] - positions[x][y];
-    }
-  }
-}
-
-// Moves from postions to nextPositions through stepping as needed
-Ret_t send_steps(int* steps[x_size][y_size]){
-
-  // Send the steps to the shift registers to move the motors accordingly
   Ret_t ret = SUCCESS;
-  unsigned char shiftRegisterOutput[number_of_boards];
-
-  memset(&shiftRegisterOutput, '\0', sizeof(shiftRegisterOutput));    // '\0' is 00000000. 
-
+  unsigned int board_index = 0;
+  int step = 0;
   int stepBit = 0;
   int dirBit = 0;
-  int bitSelect = 0;
-  unsigned char *pcbRegs;
-  int64_t step_time_elapsed = 0;
 
-  bool incomplete = true;
-
-  while (incomplete) {
-    incomplete = false;
-
-    // Write the bits into the collection(s) of bytes
-    for (int x = 0; x < x_size; x++) {
-      for (int y = 0; y < y_size; y++) {
-
-        // Formula for selecting the correct step and dir bit in the collection
-        stepBit = 2 * (2 * (x % 2) + (y % 2)) + 1;
-        dirBit = 2 * (2 * (x % 2) + (y % 2));
-
-        if(steps[x][y] > 0){
-          steps[x][y] = steps[x][y] - 1;
-          incomplete = true;
-          bitWrite(shiftRegisterOutput[(number_of_boards - 1) - ((x/2)+(y/2))], stepBit, 1);
-          bitWrite(shiftRegisterOutput[(number_of_boards - 1) - ((x/2)+(y/2))], dirBit, 0);
-        }
-        
-        if(steps[x][y] < 0){
-          steps[x][y] = steps[x][y] + 1;
-          incomplete = true;
-          bitWrite(shiftRegisterOutput[(number_of_boards - 1) - ((x/2)+(y/2))], stepBit, 1);
-          bitWrite(shiftRegisterOutput[(number_of_boards - 1) - ((x/2)+(y/2))], dirBit, 1);
-        }
-
-      }
-    }
-
-
-
-  } 
-
-
-  
-
-/*
+  // Calculate the step for each of the motors. 
   for (int x = 0; x < x_size; x++){
     for (int y = 0; y < y_size; y++){
-      if (new_positions[x][y] > positions[x][y]){
-        pcbRegs = &shiftRegisterOutput[(numberOfBoards - 1) - ((x/2)+(y/2))];
-        stepBit = 1;
-        dirBit = 1;
-        bitSelect = 7 - ((x%2)*2) - ((y%2)*4);
-        setBit(pcbRegs, bitSelect, dirBit);
-        setBit(pcbRegs, bitSelect-1, stepBit);
-        positions[x][y] = positions[x][y] + 1;
-        incomplete = true;
-        ESP_LOGI("test", "bit select %d and reg %u", bitSelect, *pcbRegs);
 
-      }else if (new_positions[x][y] < positions[x][y]){
-        pcbRegs = &shiftRegisterOutput[(numberOfBoards - 1) - ((x/2)+(y/2))];
-        stepBit = 1;
-        dirBit = 0;
-        bitSelect = 7 - ((x%2)*2) - ((y%2)*4);
-        setBit(pcbRegs, bitSelect, dirBit);
-        setBit(pcbRegs, bitSelect-1, stepBit);
-        positions[x][y] = positions[x][y] -1;
-        incomplete = true;
-        ESP_LOGI("test2", "bit select %d and reg %u", bitSelect, *pcbRegs);
+      // Get the step needed to move at that position
+      step = target_positions[x][y] - actual_positions[x][y];
 
+      if (step > max_steps_per_cycle){
+        // Print a warning
+        ESP_LOGW("Actuation", "Large step detected at position (%d, %d): %d steps", x, y, step);
+      }
+
+      // Get the index of the byte to be set.  
+      board_index = (x /2) + (y /2) * x_size; 
+      
+      // Get the bits to be changed
+      stepBit = 2 * (2 * (x % 2) + (y % 2)) + 1;
+      dirBit = 2 * (2 * (x % 2) + (y % 2));
+
+      // Set bits in the shift register output
+      if (step != 0){
+        set_bits_in_byte_arr(step, stepBit, dirBit, byte_arr, board_index);
+        ret = INCOMPLETE; 
       }
     }
   }
-*/
-  while(incomplete){
-    incomplete = false;
-    
-    // Send the output to the shift registers using SPI
-    if(incomplete == true){
-      ret = spi_send_data(spi_handle, shiftRegisterOutput, sizeof(shiftRegisterOutput));
-    
-      // Check if sufficient time has elapsed before latching the data and moving the motors
-      if(esp_timer_get_time() - step_time_elapsed > min_time_between_moves){
-        // Latch to output the shift register data to step the motors
-        gpio_set_level(rclk_pin,1);
-        gpio_set_level(rclk_pin,0);
 
-        // Log the time at this latch
-        step_time_elapsed = esp_timer_get_time();
+  return ret;
+
+}
+
+// Sets the corresponding bits in the byte array for the step and direction
+void set_bits_in_byte_arr(int step, int stepBit, int dirBit, uint8_t *byte_arr, unsigned int board_index){
+
+  if (step > 0){
+    // Move down
+    // Set the step bit to 1
+    bitWrite(byte_arr[board_index], stepBit, 1);
+    // Set the dir bit to 0
+    bitWrite(byte_arr[board_index], dirBit, 0);
+
+  } else if (step < 0){
+    // Move up 
+    // Set the step bit to 1
+    bitWrite(byte_arr[board_index], stepBit, 1);
+    // Set the dir bit to 1
+    bitWrite(byte_arr[board_index], dirBit, 1);
+  }
+
+}
+
+// Update the actual positions array in memory to reflect the positions of the drops after the move. 
+void update_actual_positions(int* target_positions[x_size][y_size]){
+  // Update the actual positions of the drops
+
+  for (int x = 0; x < x_size; x++){
+    for (int y = 0; y < y_size; y++){
+      if (target_positions[x][y] > actual_positions[x][y]){
+        actual_positions[x][y] += 1;
+      } else if (target_positions[x][y] < actual_positions[x][y]){
+        actual_positions[x][y] -= 1;
       }
     }
-
   }
+
+}
+
+// Checks the time since the last movement to prevent moving under minimum move interval.
+Ret_t move_timer_check(){
+  
+  Ret_t ret = SUCCESS;
+  static int64_t last_move_time = 0; 
+
+  // Wait until minimum time has passed
+  if((esp_timer_get_time() - last_move_time) < min_time_between_moves){
+    ESP_LOGW("Actuation", "Tried to move faster than the time between moves");
+    ret = ERROR;
+  }
+
+  last_move_time = esp_timer_get_time();
+
+  return ret; 
+
+}
+
+// Latches the shift registers to actuate the motors
+void latch_registers(){
+  gpio_set_level(rclk_pin,1);
+  gpio_set_level(rclk_pin,0);
+}
+
+
+// Defunct
+Ret_t steps_to_bytes(int* steps[x_size][y_size], uint8_t *byte_arr, unsigned int byte_arr_size){
+
+
 
   // Log the positions of the drops
   char mystr[100] = {'\0'};
@@ -230,8 +257,8 @@ Ret_t send_steps(int* steps[x_size][y_size]){
     for (int y = 0; y < y_size; y++){
          
       // Convert each int16_t to two bytes and format as hex
-      uint8_t high_byte = (positions[x][y] >> 8) & 0xFF;
-      uint8_t low_byte = positions[x][y] & 0xFF;
+      uint8_t high_byte = (actual_positions[x][y] >> 8) & 0xFF;
+      uint8_t low_byte = actual_positions[x][y] & 0xFF;
 
       // Format the bytes into a hex string and append to the buffer
       snprintf(temp, sizeof(temp), "%02X%02X ", high_byte, low_byte);
@@ -248,10 +275,8 @@ Ret_t send_steps(int* steps[x_size][y_size]){
 
 }
 
-// Embeds the step in the bits of the corresponding shift register bytes
-Ret_t set_shift_registers(){
 
-}
+
 
 Ret_t calibration(){
 

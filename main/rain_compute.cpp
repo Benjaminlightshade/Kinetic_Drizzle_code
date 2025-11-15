@@ -36,7 +36,7 @@ Ret_t computeNextPositions(int *pPositions, SystemState state){
        
     if (state == CALIBRATE_STATE){
         // If state is calibrate, run calibration sequence
-
+        
 
     } else if (state == RUNNING_STATE){
         // If state is running, run normal sequence
