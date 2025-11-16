@@ -19,8 +19,8 @@ static int actual_positions[x_size][y_size];
 spi_device_handle_t spi_handle = NULL;
 
 // Board order for shift register output. 
-unsigned int board_order[number_of_boards] = {0,1,2,3,4,5,6,7}; // Order of the boards for shift register output
-// Continue from here: the board order needs to be ingrained into actuation movement. 
+// The array corresponds to the order in which the shift registers on the PCBs are daisy chained.
+unsigned int board_order[number_of_boards] = {0,1,2,3,7,6,5,4}; 
 
 ////// Utility functions /////
 
@@ -118,8 +118,12 @@ Ret_t compute_to_move(int* target_positions[x_size][y_size]){
     steps_cleared = get_steps_to_bytes(target_positions, shiftRegisterOutput, number_of_boards);
 
     // Check the time since the previous move
-    while (move_timer_check() != SUCCESS){
-      ESP_LOGI("Actuation", "Waiting for min time to pass");
+    if (move_timer_check() != SUCCESS){
+      ESP_LOGW("Actuation", "Move time too close together");
+      
+      // Return success to move on to the next cycle without moving.
+      ret = SUCCESS;  
+      return ret; 
     }
 
     // Send the output to the shift registers using SPI
@@ -164,7 +168,7 @@ Ret_t get_steps_to_bytes(int* target_positions[x_size][y_size], uint8_t *byte_ar
       }
 
       // Get the index of the byte to be set.  
-      board_index = (x /2) + (y /2) * x_size; 
+      board_index = board_order[(x /2) + (y /2) * x_size]; 
       
       // Get the bits to be changed
       stepBit = 2 * (2 * (x % 2) + (y % 2)) + 1;
@@ -245,8 +249,6 @@ void latch_registers(){
 
 // Defunct
 Ret_t steps_to_bytes(int* steps[x_size][y_size], uint8_t *byte_arr, unsigned int byte_arr_size){
-
-
 
   // Log the positions of the drops
   char mystr[100] = {'\0'};

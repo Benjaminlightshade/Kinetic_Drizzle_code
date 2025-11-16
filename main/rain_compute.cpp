@@ -53,4 +53,7 @@ Ret_t computeNextPositions(int *pPositions, SystemState state){
 }
 
 
+// Log the positions to serial for debugging.
+// Continue from here!
+
 
