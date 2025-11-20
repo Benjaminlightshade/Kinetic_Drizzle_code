@@ -97,9 +97,19 @@ esp_err_t spi_send_data(spi_device_handle_t spi, const uint8_t* data, size_t len
   return ret;
 }
 
+void bitWrite(uint8_t *byte_value, int bit_pos, int value) {
+  if (value == 1) {
+      // Set the n-th bit to 1
+      *byte_value |= (1 << bit_pos);
+  } else {
+      // Clear the n-th bit to 0
+      *byte_value &= ~(1 << bit_pos);
+  }
+}
+
 ////// Task functions ///////
 
-Ret_t compute_to_move(int* target_positions[x_size][y_size]){
+Ret_t compute_to_move(int target_positions[x_size][y_size]){
   
   Ret_t ret = SUCCESS;
   Ret_t steps_cleared = INCOMPLETE;
@@ -147,7 +157,7 @@ Ret_t compute_to_move(int* target_positions[x_size][y_size]){
 
 // Function that takes the target positions and calculates 1 step to take for each motor. 
 // Outputs the bytes needed to be sent to SPI to move the motors. 
-Ret_t get_steps_to_bytes(int* target_positions[x_size][y_size], uint8_t *byte_arr, unsigned int byte_arr_size){
+Ret_t get_steps_to_bytes(int target_positions[x_size][y_size], uint8_t *byte_arr, unsigned int byte_arr_size){
 
   Ret_t ret = SUCCESS;
   unsigned int board_index = 0;
@@ -192,22 +202,22 @@ void set_bits_in_byte_arr(int step, int stepBit, int dirBit, uint8_t *byte_arr, 
   if (step > 0){
     // Move down
     // Set the step bit to 1
-    bitWrite(byte_arr[board_index], stepBit, 1);
+    bitWrite(&byte_arr[board_index], stepBit, 1);
     // Set the dir bit to 0
-    bitWrite(byte_arr[board_index], dirBit, 0);
+    bitWrite(&byte_arr[board_index], dirBit, 0);
 
   } else if (step < 0){
     // Move up 
     // Set the step bit to 1
-    bitWrite(byte_arr[board_index], stepBit, 1);
+    bitWrite(&byte_arr[board_index], stepBit, 1);
     // Set the dir bit to 1
-    bitWrite(byte_arr[board_index], dirBit, 1);
+    bitWrite(&byte_arr[board_index], dirBit, 1);
   }
 
 }
 
 // Update the actual positions array in memory to reflect the positions of the drops after the move. 
-void update_actual_positions(int* target_positions[x_size][y_size]){
+void update_actual_positions(int target_positions[x_size][y_size]){
   // Update the actual positions of the drops
 
   for (int x = 0; x < x_size; x++){
@@ -248,34 +258,34 @@ void latch_registers(){
 
 
 // Defunct
-Ret_t steps_to_bytes(int* steps[x_size][y_size], uint8_t *byte_arr, unsigned int byte_arr_size){
+// Ret_t steps_to_bytes(int* steps[x_size][y_size], uint8_t *byte_arr, unsigned int byte_arr_size){
 
-  // Log the positions of the drops
-  char mystr[100] = {'\0'};
-  char temp[6] = {'\0'};
-  const char tag[10] = "ROW";
+//   // Log the positions of the drops
+//   char mystr[100] = {'\0'};
+//   char temp[6] = {'\0'};
+//   const char tag[10] = "ROW";
 
-  for (int x = 0; x < x_size; x++){
-    for (int y = 0; y < y_size; y++){
+//   for (int x = 0; x < x_size; x++){
+//     for (int y = 0; y < y_size; y++){
          
-      // Convert each int16_t to two bytes and format as hex
-      uint8_t high_byte = (actual_positions[x][y] >> 8) & 0xFF;
-      uint8_t low_byte = actual_positions[x][y] & 0xFF;
+//       // Convert each int16_t to two bytes and format as hex
+//       uint8_t high_byte = (actual_positions[x][y] >> 8) & 0xFF;
+//       uint8_t low_byte = actual_positions[x][y] & 0xFF;
 
-      // Format the bytes into a hex string and append to the buffer
-      snprintf(temp, sizeof(temp), "%02X%02X ", high_byte, low_byte);
-      strncat(mystr, temp, 6);  
-    }    
+//       // Format the bytes into a hex string and append to the buffer
+//       snprintf(temp, sizeof(temp), "%02X%02X ", high_byte, low_byte);
+//       strncat(mystr, temp, 6);  
+//     }    
 
-    // Sends the messages in x rows
-    char new_tag[30] = {'\0'};
-    sprintf(new_tag, "%s%d",tag, x);
-    ESP_LOGI(new_tag, "%s", mystr);
-    memset(new_tag, '\0', 30);
-    memset(mystr, '\0', sizeof(mystr));
-  }    
+//     // Sends the messages in x rows
+//     char new_tag[30] = {'\0'};
+//     sprintf(new_tag, "%s%d",tag, x);
+//     ESP_LOGI(new_tag, "%s", mystr);
+//     memset(new_tag, '\0', 30);
+//     memset(mystr, '\0', sizeof(mystr));
+//   }    
 
-}
+// }
 
 
 

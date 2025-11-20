@@ -97,7 +97,7 @@ void actuatorMotorTask(void *pvparameter){
         if(xSemaphoreTake(computePos.computePositionsMutex, 100/portTICK_PERIOD_MS) == pdTRUE){
             
             // Run the actuation of the motors for the given positions
-            compute_to_move(&computePos.positions);
+            compute_to_move(computePos.positions);
             xSemaphoreGive(computePos.computePositionsMutex);
 
         };

@@ -10,18 +10,10 @@
 
 Ret_t computeNextPositions(int* pPositions, SystemState state);
 
-Ret_t calibrationSequence(ComputePositions* computePos);
+enum sequencer_states{
+    SEQ_1, 
+    SEQ_2
+} sequencer_states;
 
-// Types of rain sequence
-
-// bool testMove(int64_t time, int positions[x_size][y_size]);
-
-// bool SimpleWaveSequence(double time, int *positions, int x, int y);
-
-// bool RandomDropSequence(double time, int *positions, int xSize, int ySize, int *dropOrder);
-
-// bool ResetDrops(int *positions, int xSize, int ySize);
-
-// void shuffleArray(int* array, int size);
 
 #endif
