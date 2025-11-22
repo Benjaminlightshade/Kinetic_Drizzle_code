@@ -1,7 +1,4 @@
-idf_component_register(SRCS "rain_compute.cpp" "rain_compute.c" 
+idf_component_register(SRCS "rain_compute.cpp"
                     "main.c" 
                     "actuation.c"
-                   
-                    "rain_compute.cpp"
                     INCLUDE_DIRS ".")
-

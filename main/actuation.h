@@ -3,9 +3,10 @@
 
 #include "esp_log.h"
 #include "esp_err.h"
-
-#include "helper_functions.h"
 #include "config.h"
+
+#include "driver/spi_master.h"
+
 
 // Init functions
 
@@ -15,7 +16,7 @@ esp_err_t init_gpio();
 
 // Utility functions
 
-esp_err_t spi_send_data(spi_device_handle_t spi, const unsigned char *data, size_t length);
+esp_err_t spi_send_data(spi_device_handle_t spi, const uint8_t* data, size_t length);
 void bitWrite(uint8_t *byte_value, int bit_pos, int value);
 
 // Task functions

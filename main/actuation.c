@@ -7,8 +7,6 @@
 #include "esp_timer.h"
 #include "esp_log.h"
 
-#include "helper_functions.h"
-#include "rain_compute.h"
 #include "config.h"
 
 ////// Variables /////

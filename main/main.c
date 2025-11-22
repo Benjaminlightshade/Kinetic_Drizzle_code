@@ -10,7 +10,7 @@
 
 #include "config.h"
 #include "actuation.h"
-#include "rain_compute.h"
+#include "rain_compute.hpp"
 
 // Global variables //
 TaskHandle_t xMotorTask, xComputeTask = NULL;
@@ -41,7 +41,7 @@ void computeTask(void *pvparameter){
     while(1){
         
         // Calibration is handled by the actuation task directly
-        if (sys_state == CALIBRATE_STATE){
+        if (sys_state == CALIBRATE_STATE || sys_state == ERROR_STATE){
             continue;
         }
 
@@ -51,7 +51,7 @@ void computeTask(void *pvparameter){
         memset(positions, 0, sizeof(positions));
 
         // Compute the next positions for the drops in the pattern
-        if (computeNextPositions((int *)positions, sys_state) != SUCCESS){
+        if (computeNextPositions(positions, sys_state) != SUCCESS){
             // Handle error
             ESP_LOGE("ComputeTask", "Failed to compute next positions");
             continue;
@@ -120,7 +120,7 @@ void setup(){
     // Initialize the GPIO pins
     ret = init_gpio();
     if (ret != ESP_OK) {
-        ESP_LOGE("Main", "Failed to initialize SPI");
+        ESP_LOGE("Main", "Failed to initialize GPIO");
         return;
     }
 
@@ -131,6 +131,10 @@ void setup(){
         }
     }
     computePos.computePositionsMutex = xSemaphoreCreateMutex();
+
+    Ret_t ret2 = SUCCESS; 
+    
+    ret2 = initComputeNextPositions(); 
 
     // Initialize the system state to calibrate 
     sys_state = CALIBRATE_STATE;
