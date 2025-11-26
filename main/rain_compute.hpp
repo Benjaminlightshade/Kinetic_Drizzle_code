@@ -12,6 +12,12 @@ enum sequencer_states{
     SEQ1, 
     SEQ2, 
     SEQ3, 
+    SEQ4,
+    SEQ5,
+    SEQ6,
+    SEQ7,
+    SEQ8,
+    SEQ9,
     SEQ_END
 };
 
@@ -52,8 +58,8 @@ public:
 
     Sequencer();
 
-    void advance_state();
-    void select_state(int new_state);
+    void advance_seq();
+    void select_seq(int new_state);
     void update_seq_time_start();
     void update_seq_time();
 
