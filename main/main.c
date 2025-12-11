@@ -21,15 +21,15 @@ ComputePositions computePos;
 void controlTask(void *pvparameter) {
     while (1) {
         switch (sys_state) {
-            case CALIBRATE_STATE:
+            case CALIBRATE_SYS_STATE:
                 // trigger SPI task to move up
                 break;
 
-            case RUNNING_STATE:
+            case RUNNING_SYS_STATE:
                 // normal operation
                 break;
 
-            case ERROR_STATE:
+            case ERROR_SYS_STATE:
                 // stop everything
                 break;
         }
@@ -41,7 +41,7 @@ void computeTask(void *pvparameter){
     while(1){
         
         // Calibration is handled by the actuation task directly
-        if (sys_state == CALIBRATE_STATE || sys_state == ERROR_STATE){
+        if (sys_state == CALIBRATE_SYS_STATE || sys_state == ERROR_SYS_STATE){
             continue;
         }
 
@@ -82,26 +82,43 @@ void computeTask(void *pvparameter){
 void actuatorMotorTask(void *pvparameter){
     while(1){
 
-        if (sys_state == CALIBRATE_STATE){
-            calibration();
-            continue;
+        Ret_t status = SUCCESS;
+
+        if (sys_state == CALIBRATE_SYS_STATE){
+            status = calibration();
+
+            if (status == SUCCESS){
+                ESP_LOGI("ActuationTask", "Calibration successful. Entering running state");
+                sys_state = RUNNING_SYS_STATE;
+            } else {
+                ESP_LOGE("ActuationTask", "Calibration failed. Entering error state");
+                sys_state = ERROR_SYS_STATE;
+            }
+
         }
 
-        // // Wait for notification from compute task 
-        // if (ulTaskNotifyTakeIndexed(0, pdTRUE, 5000/portTICK_PERIOD_MS) == pdFALSE){
-        //     ESP_LOGI("Sequence", "No notification received from compute task."); 
-        //     continue;
-        // }
+        if (sys_state == ERROR_SYS_STATE){
+            // In error state, do not actuate
+            ESP_LOGI("ActuationTask", "System in error state. Actuation task halted");
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue; 
+        }
+
         
         // Take the mutex to access the computed positions
         if(xSemaphoreTake(computePos.computePositionsMutex, 100/portTICK_PERIOD_MS) == pdTRUE){
             
             // Run the actuation of the motors for the given positions
-            compute_to_move(computePos.positions);
+            status = compute_to_move(computePos.positions);
             xSemaphoreGive(computePos.computePositionsMutex);
 
-        };
+            if (status != SUCCESS){
+                ESP_LOGE("ActuationTask", "Issue detected.");
+                sys_state = ERROR_SYS_STATE;
+                continue;
+            }
 
+        };
     }
 }
 
@@ -118,7 +135,13 @@ void setup(){
     }
     
     // Initialize the GPIO pins
-    ret = init_gpio();
+    ret = init_gpio_shift_latch();
+    if (ret != ESP_OK) {
+        ESP_LOGE("Main", "Failed to initialize GPIO");
+        return;
+    }
+
+    ret = init_gpio_limit_switch();
     if (ret != ESP_OK) {
         ESP_LOGE("Main", "Failed to initialize GPIO");
         return;
@@ -137,7 +160,7 @@ void setup(){
     ret2 = initComputeNextPositions(); 
 
     // Initialize the system state to calibrate 
-    sys_state = CALIBRATE_STATE;
+    sys_state = CALIBRATE_SYS_STATE;
 
 }
 

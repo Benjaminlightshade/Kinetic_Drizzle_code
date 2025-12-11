@@ -30,6 +30,7 @@ Ret_t move_timer_check();
 void latch_registers();
 
 Ret_t calibration();
+void force_move(int x, int y, int steps);
 
 
 #endif

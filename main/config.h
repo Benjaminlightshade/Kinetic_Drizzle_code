@@ -15,6 +15,7 @@
 // Constants //
 #define max_drop_pos 10000                      // Drops will be at the bottom position
 #define start_drop_pos 0                        // Drops will start at position 0, when they are at the top
+#define zeroed_drop_pos -50                  // Position when the drop is just above the limit switch
 #define min_drop_pos -10000                     // Maximum that the drops can go up to hit calibration
 
 #define max_steps_per_cycle 10                  // Maximum steps a drop can move in one compute cycle. 
@@ -22,14 +23,17 @@
 
 
 // Pins //
-#define rclk_pin 22                   // RCLK is the latch pin
-#define rclk_pin_bitmask (1ULL<<rclk_pin)
+#define PIN_NUM_RCLK 22 // Shift register RCLK - latch pin
+#define rclk_pin_bitmask (1ULL<<PIN_NUM_RCLK)
 
-#define PIN_NUM_MISO 12
-#define PIN_NUM_MOSI 13
-#define PIN_NUM_CLK  14
+#define PIN_NUM_MISO 12 // Shift register MISO 
+#define PIN_NUM_MOSI 13 // Shift register MOSI
+#define PIN_NUM_CLK  14 // Shift register CLK
 
 #define spi_device_hostid SPI2_HOST
+
+#define PIN_NUM_LIMIT_SWITCH 0 // Limit switch pin/
+#define limit_switch_pin_bitmask (1ULL<<PIN_NUM_LIMIT_SWITCH)
 
 #define PI 3.1412
 
@@ -58,9 +62,9 @@ typedef enum {
 
 // State machine state, controlled by the control task
 typedef enum{
-    CALIBRATE_STATE, 
-    RUNNING_STATE, 
-    ERROR_STATE
+    CALIBRATE_SYS_STATE, 
+    RUNNING_SYS_STATE, 
+    ERROR_SYS_STATE
 } SystemState;
 
 #endif

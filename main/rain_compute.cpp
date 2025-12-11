@@ -48,13 +48,12 @@ int sequences::pattern2(int pos[x_size][y_size], uint64_t elapsed_us){
 
 Sequencer::Sequencer()
 {
-    memset(new_positions, 0, sizeof(new_positions));
     seq_time_start = esp_timer_get_time();
     seq_time = 0;
 
     seq_state = SEQ1;  // Start at the first sequence
 
-    // Load the function pointer table
+    // Initialize the function pointer table
     seq_table[SEQ1] = &sequences::test1;
     seq_table[SEQ2] = &sequences::pattern2;
 
@@ -94,18 +93,14 @@ void Sequencer::get_new_positions(int pos[x_size][y_size])
     seq_ptrs fn = seq_table[seq_state];
 
     // Run pattern
-    int finished = (this->*fn)(pos, seq_time);
+    int seq_ret = (this->*fn)(pos, seq_time);
 
     // After finish → move to next pattern and restart timer
-    if (finished) {
+    if (seq_ret == SEQ_COMPLETE) {
         advance_seq();
         update_seq_time_start();
     }
 
-    // Copy positions to local buffer (optional)
-    for (int x = 0; x < x_size; x++)
-        for (int y = 0; y < y_size; y++)
-            new_positions[x][y] = pos[x][y];
 }
 
 // C linkage wrapper functions //

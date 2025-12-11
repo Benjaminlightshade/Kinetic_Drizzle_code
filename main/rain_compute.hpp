@@ -22,8 +22,8 @@ enum sequencer_states{
 };
 
 enum seq_returns{
-    STATE_INCOMPLETE,
-    STATE_COMPLETE
+    SEQ_INCOMPLETE,
+    SEQ_COMPLETE
 };
 // ---------------------------------------------------------------------------
 // sequences base class
@@ -31,12 +31,14 @@ enum seq_returns{
 
 #ifdef __cplusplus 
 
+// Sequence patterns. Create the sequences by inheriting this class. 
+
 class sequences {
 public:
     virtual ~sequences() = default;
 
-    // Return int = done/not done (1 = finished, 0 = running)
-    int pattern1(int pos[x_size][y_size], uint64_t elapsed_us);
+    /* Moves down to the maximum and then back up */
+    int test1(int pos[x_size][y_size], uint64_t elapsed_us);
     int pattern2(int pos[x_size][y_size], uint64_t elapsed_us);
 };
 
@@ -47,7 +49,6 @@ public:
 class Sequencer : public sequences {
 public:
 
-    int new_positions[x_size][y_size];
     uint64_t seq_time_start;
     uint64_t seq_time;
     int seq_state;

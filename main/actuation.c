@@ -60,7 +60,7 @@ esp_err_t init_spi() {
 }
 
 // Function to init the gpio pins that will latch the shift registers
-esp_err_t init_gpio(){
+esp_err_t init_gpio_shift_latch(){
   esp_err_t ret = ESP_OK;
   gpio_config_t io_conf = {};
 
@@ -69,9 +69,24 @@ esp_err_t init_gpio(){
   io_conf.pull_down_en = 1;
   ret = gpio_config(&io_conf);
 
-  // ret = gpio_set_direction(latch_pin, GPIO_MODE_OUTPUT);
   if (ret != ESP_OK) {
-    ESP_LOGI("SPI", "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
+    ESP_LOGI("GPIO", "Failed to initialize GPIO shift register: %s", esp_err_to_name(ret));
+    return ret;
+  }
+  return ret;
+}
+
+esp_err_t init_gpio_limit_switch(){
+  esp_err_t ret = ESP_OK;
+  gpio_config_t io_conf = {};
+
+  io_conf.pin_bit_mask = limit_switch_pin_bitmask;
+  io_conf.mode = GPIO_MODE_INPUT;
+  io_conf.pull_down_en = 1;
+  ret = gpio_config(&io_conf);
+
+  if (ret != ESP_OK) {
+    ESP_LOGI("GPIO", "Failed to initialize GPIO limit switch: %s", esp_err_to_name(ret));
     return ret;
   }
   return ret;
@@ -107,6 +122,7 @@ void bitWrite(uint8_t *byte_value, int bit_pos, int value) {
 
 ////// Task functions ///////
 
+// Moves from the actual_postiions to target_positions
 Ret_t compute_to_move(int target_positions[x_size][y_size]){
   
   Ret_t ret = SUCCESS;
@@ -250,8 +266,8 @@ Ret_t move_timer_check(){
 
 // Latches the shift registers to actuate the motors
 void latch_registers(){
-  gpio_set_level(rclk_pin,1);
-  gpio_set_level(rclk_pin,0);
+  gpio_set_level(PIN_NUM_RCLK,1);
+  gpio_set_level(PIN_NUM_RCLK,0);
 }
 
 
@@ -292,12 +308,79 @@ Ret_t calibration(){
 
 	Ret_t status = SUCCESS;
 
+  // Check if any drops have reached the limit switch. 
+  if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == 1){
+    ESP_LOGI("Calibration", "Limit switch triggered before calibration start.");
+    ESP_LOGI("Calibration", "Moving all drops down");
 
+    for (int x = 0; x < x_size; x++){
+      for (int y = 0; y < y_size; y++){
+        // Move drop down by max_drop_pos steps
+        force_move(x, y, 10);
+      }
+    }
+    
+    if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == 1){
+      // Limit switch is still triggered despite the moving down the drops. 
+      ESP_LOGE("Calibration", "Limit switch still triggered after move down applied.");
+      return ERROR;
+    } else if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == 0){
+      ESP_LOGI("Calibration", "Limit switch cleared after moving down all drops.");
+    }
 
-	// TBC: Calibration logic here
+  }
 
+  // Move each drop up until the limit switch is triggered. This will be the zerod_drop_pos. 
+  for (int x = 0; x < x_size; x++){
+    for (int y = 0; y < y_size; y++){
+
+      status = INCOMPLETE;
+
+      while(actual_positions[x][y] > min_drop_pos){
+        force_move(x, y, -1);
+        actual_positions[x][y] -= 1;
+
+        if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == 1){
+          // Limit switch has been triggered. 
+          ESP_LOGI("Calibration", "Limit switch triggered at drop (%d, %d).", x, y);
+          
+          // Move to start position. 
+          force_move(x, y, -1*zeroed_drop_pos);
+          actual_positions[x][y] = start_drop_pos;
+          
+          status = SUCCESS;
+          ESP_LOGI("Calibration", "Drop (%d, %d) calibrated to position %d.", x, y, actual_positions[x][y]);
+
+          break;
+        }
+      }
+
+      if (status != SUCCESS){
+        // Could not claibrate the drop. 
+        status = ERROR;
+        ESP_LOGE("Calibration", "Limit switch not triggered for drop (%d, %d) during calibration.", x, y);
+        return status;
+      }
+
+    }
+  }
+
+  if(status == SUCCESS){
+    ESP_LOGI("Calibration", "All drops calibrated successfully.");
+  }
 
 	return status; 
+
+}
+
+void force_move(int x, int y, int steps){
+
+  int pseudo_pos[x_size][y_size];
+
+  memcpy(&pseudo_pos, &actual_positions, sizeof(actual_positions));
+
+  pseudo_pos[x][y] -= steps;
+  compute_to_move(pseudo_pos);
 
 }
 
