@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_timer.h"
+#include "driver/uart.h"
 
 #include "string.h"
 
@@ -20,8 +21,23 @@ ComputePositions computePos;
 // TBC : control task transitions and uses
 void controlTask(void *pvparameter) {
     while (1) {
+
+        // Receive byte from UART
+        const uart_port_t uart_num = UART_NUM_0;
+        uint8_t data[128];
+        int length = 0;
+        ESP_ERROR_CHECK(uart_get_buffered_data_len(uart_num, (size_t*)&length));
+        length = uart_read_bytes(uart_num, data, length, 100);
+
+        if(length > 0 ){
+            ESP_LOGI("ControlTask", "Received %d bytes from UART", length);
+            ESP_LOGI("ControlTask", "Data: %.*s", length, data);
+        }
+
+
         switch (sys_state) {
             case CALIBRATE_SYS_STATE:
+                
                 // trigger SPI task to move up
                 break;
 
@@ -33,6 +49,7 @@ void controlTask(void *pvparameter) {
                 // stop everything
                 break;
         }
+
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
@@ -41,7 +58,8 @@ void computeTask(void *pvparameter){
     while(1){
         
         // Calibration is handled by the actuation task directly
-        if (sys_state == CALIBRATE_SYS_STATE || sys_state == ERROR_SYS_STATE){
+        if (sys_state != RUNNING_SYS_STATE){
+            vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
 
@@ -106,19 +124,22 @@ void actuatorMotorTask(void *pvparameter){
 
         
         // Take the mutex to access the computed positions
-        if(xSemaphoreTake(computePos.computePositionsMutex, 100/portTICK_PERIOD_MS) == pdTRUE){
+        if(sys_state == RUNNING_SYS_STATE){
+
+            if (xSemaphoreTake(computePos.computePositionsMutex, 100/portTICK_PERIOD_MS) == pdTRUE){
             
-            // Run the actuation of the motors for the given positions
-            status = compute_to_move(computePos.positions);
-            xSemaphoreGive(computePos.computePositionsMutex);
+                // Run the actuation of the motors for the given positions
+                status = compute_to_move(computePos.positions);
+                xSemaphoreGive(computePos.computePositionsMutex);
 
-            if (status != SUCCESS){
-                ESP_LOGE("ActuationTask", "Issue detected.");
-                sys_state = ERROR_SYS_STATE;
-                continue;
+                if (status != SUCCESS){
+                    ESP_LOGE("ActuationTask", "Issue detected.");
+                    sys_state = ERROR_SYS_STATE;
+                    continue;
+                }
+
             }
-
-        };
+        }
     }
 }
 
@@ -154,25 +175,30 @@ void setup(){
         }
     }
     computePos.computePositionsMutex = xSemaphoreCreateMutex();
-
-    Ret_t ret2 = SUCCESS; 
     
-    ret2 = initComputeNextPositions(); 
+    initComputeNextPositions(); 
 
     // Initialize the system state to calibrate 
     sys_state = CALIBRATE_SYS_STATE;
 
 }
 
+void test_print(){
+    ESP_LOGI("Test", "Test function executed");
+    printf("Hello\n");
+}
+
+
 void app_main(void)
 {
     // Initialize variables and peripherals
     setup();
-
+    for (int i = 0; i < 5; i++){
+        test_print();
+    }
     // Create the motor and compute tasks
-    xTaskCreate(actuatorMotorTask, "Motor", 2048, NULL, 3, &xMotorTask);
-    xTaskCreate(computeTask, "Computing", 2048, NULL, 2, &xComputeTask);
+    // xTaskCreate(actuatorMotorTask, "Motor", 2048, NULL, 3, &xMotorTask);
+    // xTaskCreate(computeTask, "Computing", 2048, NULL, 2, &xComputeTask);
     xTaskCreate(controlTask, "Control", 2048, NULL, 1, NULL);
-
     
 }

@@ -27,7 +27,7 @@ int sequences::test1(int pos[x_size][y_size], uint64_t elapsed_us){
     if (elapsed_us <= half_time){
         calc_pos = gradient * elapsed_us; 
     } else if (elapsed_us <= SEQ_TIME_LIMIT ){
-        calc_pos - max_drop_pos - (gradient * (elapsed_us - half_time));
+        calc_pos = max_drop_pos - (gradient * (elapsed_us - half_time));
     } else if (elapsed_us > SEQ_TIME_LIMIT){
         calc_pos = min_drop_pos; 
         status = SEQ_COMPLETE;

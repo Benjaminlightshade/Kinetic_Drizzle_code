@@ -12,7 +12,10 @@
 
 esp_err_t init_spi();
 
-esp_err_t init_gpio();
+esp_err_t init_gpio_shift_latch();
+esp_err_t init_gpio_limit_switch();
+esp_err_t spi_send_data(spi_device_handle_t spi, const uint8_t* data, size_t length);
+
 
 // Utility functions
 
