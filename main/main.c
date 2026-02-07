@@ -32,6 +32,9 @@ void controlTask(void *pvparameter) {
         if(length > 0 ){
             ESP_LOGI("ControlTask", "Received %d bytes from UART", length);
             ESP_LOGI("ControlTask", "Data: %.*s", length, data);
+
+            
+
         }
 
 
@@ -50,7 +53,7 @@ void controlTask(void *pvparameter) {
                 break;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -69,7 +72,7 @@ void computeTask(void *pvparameter){
         memset(positions, 0, sizeof(positions));
 
         // Compute the next positions for the drops in the pattern
-        if (computeNextPositions(positions, sys_state) != SUCCESS){
+        if (computeNextPositions(positions) != SUCCESS){
             // Handle error
             ESP_LOGE("ComputeTask", "Failed to compute next positions");
             continue;

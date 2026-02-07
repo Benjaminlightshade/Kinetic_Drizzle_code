@@ -38,8 +38,8 @@ public:
     virtual ~sequences() = default;
 
     /* Moves down to the maximum and then back up */
-    int test1(int pos[x_size][y_size], uint64_t elapsed_us);
-    int pattern2(int pos[x_size][y_size], uint64_t elapsed_us);
+    int test1(int pos[x_size][y_size], int64_t elapsed_us);
+    int pattern2(int pos[x_size][y_size], int64_t elapsed_us);
 };
 
 // ---------------------------------------------------------------------------
@@ -49,11 +49,11 @@ public:
 class Sequencer : public sequences {
 public:
 
-    uint64_t seq_time_start;
-    uint64_t seq_time;
+    int64_t seq_time_start;
+    int64_t seq_time;
     int seq_state;
 
-    using seq_ptrs = int (sequences::*)(int[x_size][y_size], uint64_t);
+    using seq_ptrs = int (sequences::*)(int[x_size][y_size], int64_t);
 
     seq_ptrs seq_table[SEQ_END];
 
@@ -69,13 +69,19 @@ public:
 
 #endif // __cplusplus
 
+
+// Interface functions
+int64_t get_time_us();
+void log_message(const char* tag, const char* message);
+
+
 #ifdef __cplusplus
 // Wrapper functions for C linkage
 extern "C" {
 #endif
 
 Ret_t initComputeNextPositions();
-Ret_t computeNextPositions(int pos[x_size][y_size], SystemState state);
+Ret_t computeNextPositions(int pos[x_size][y_size]);
 
 #ifdef __cplusplus
 }

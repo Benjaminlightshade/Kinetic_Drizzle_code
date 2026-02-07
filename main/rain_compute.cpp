@@ -1,11 +1,13 @@
 #include "config.h"
 #include "rain_compute.hpp"
-#include "esp_log.h"
-#include "esp_timer.h"
 #include <memory>
 #include <string.h>
-
 #include <algorithm>
+
+#ifdef PLATFORM_ESP32
+#include "esp_timer.h"
+#include "esp_log.h"
+#endif
 
 // Global variables //
 
@@ -16,10 +18,10 @@ static Sequencer sequencer;
 
 // Sequences class methods //
 
-int sequences::test1(int pos[x_size][y_size], uint64_t elapsed_us){
+int sequences::test1(int pos[x_size][y_size], int64_t elapsed_us){
 
     int status = SEQ_INCOMPLETE;
-    uint64_t half_time = SEQ_TIME_LIMIT / 2; 
+    int64_t half_time = SEQ_TIME_LIMIT / 2; 
     int gradient = max_drop_pos / half_time; 
     int calc_pos; 
 
@@ -38,7 +40,7 @@ int sequences::test1(int pos[x_size][y_size], uint64_t elapsed_us){
     return status; 
 }
 
-int sequences::pattern2(int pos[x_size][y_size], uint64_t elapsed_us){
+int sequences::pattern2(int pos[x_size][y_size], int64_t elapsed_us){
     int finished = true;
 
     return false;
@@ -48,7 +50,7 @@ int sequences::pattern2(int pos[x_size][y_size], uint64_t elapsed_us){
 
 Sequencer::Sequencer()
 {
-    seq_time_start = esp_timer_get_time();
+    seq_time_start = get_time_us();
     seq_time = 0;
 
     seq_state = SEQ1;  // Start at the first sequence
@@ -76,12 +78,12 @@ void Sequencer::select_seq(int new_state)
 
 void Sequencer::update_seq_time_start()
 {
-    seq_time_start = esp_timer_get_time();
+    seq_time_start = get_time_us();
 }
 
 void Sequencer::update_seq_time()
 {
-    uint64_t now = esp_timer_get_time();
+    int64_t now = get_time_us();
     seq_time = now - seq_time_start;
 }
 
@@ -103,6 +105,45 @@ void Sequencer::get_new_positions(int pos[x_size][y_size])
 
 }
 
+
+// Timing functions selected by how the unit is compiled
+#ifdef PLATFORM_ESP32
+
+// Timing functions on ESP platform
+int64_t get_time_us(){
+    
+    return esp_timer_get_time();
+
+}
+
+void log_message(const char* tag, const char* message){
+    ESP_LOGI(tag, "%s", message);
+}
+
+
+
+// Logging functions
+
+#elif PC_PLATFORM
+
+// Timing functions when compiled on the PC
+int64_t get_time_us(){
+    
+}
+
+// Logging functions
+
+void log_message(const char* tag, const char* message){
+    
+}
+
+
+
+#endif
+
+
+
+
 // C linkage wrapper functions //
 // Used to interface main C code with the C++ sequencer class //
 
@@ -114,11 +155,11 @@ Ret_t initComputeNextPositions()
     Ret_t ret = SUCCESS;
     sequencer = Sequencer();
 
-    ESP_LOGI("Sequence", "Sequencer initialized");
+    log_message("Sequence", "Sequencer initialized");
     return ret;  // SUCCESS
 }
 
-Ret_t computeNextPositions(int pos[x_size][y_size], SystemState state)
+Ret_t computeNextPositions(int pos[x_size][y_size])
 {
     Ret_t ret = SUCCESS;
 
