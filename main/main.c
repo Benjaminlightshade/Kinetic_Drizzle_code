@@ -10,6 +10,7 @@
 #include "string.h"
 
 #include "config.h"
+#include "main.h"
 #include "actuation.h"
 #include "rain_compute.hpp"
 

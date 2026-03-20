@@ -1,10 +1,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "driver/gpio.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
-
 // Parameters //
 #define x_size 4
 #define y_size 8
@@ -39,16 +35,6 @@
 
 // Global vairables // 
 
-/* 
-Compute position is the ideal position that the drops should be in. 
-Contains a mutex for safe access across tasks.
-*/
-
-typedef struct {
-    int positions[x_size][y_size];
-    SemaphoreHandle_t computePositionsMutex;
-} ComputePositions; 
-
 #define DEF_ERROR 0
 #define DEF_SUCCESS 1
 #define DEF_INCOMPLETE 2
@@ -59,12 +45,5 @@ typedef enum {
     SUCCESS = DEF_SUCCESS,
     INCOMPLETE = DEF_INCOMPLETE
 } Ret_t; 
-
-// State machine state, controlled by the control task
-typedef enum{
-    CALIBRATE_SYS_STATE, 
-    RUNNING_SYS_STATE, 
-    ERROR_SYS_STATE
-} SystemState;
 
 #endif

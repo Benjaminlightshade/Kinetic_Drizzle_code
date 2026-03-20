@@ -9,6 +9,11 @@
 #include "esp_log.h"
 #endif
 
+#ifdef PLATFORM_PC
+#include <iostream>
+#include <chrono>
+#endif
+
 // Global variables //
 
 static Sequencer sequencer;
@@ -124,17 +129,28 @@ void log_message(const char* tag, const char* message){
 
 // Logging functions
 
-#elif PC_PLATFORM
+#elif PLATFORM_PC
+
+static int64_t start_time = 0;
 
 // Timing functions when compiled on the PC
 int64_t get_time_us(){
-    
+    if (start_time == 0){
+        start_time = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::high_resolution_clock::now().time_since_epoch()
+        ).count();
+    }
+    return std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::high_resolution_clock::now().time_since_epoch()
+    ).count() - start_time;
+
+    log_message("Timing", "Get time called");
 }
 
 // Logging functions
 
 void log_message(const char* tag, const char* message){
-    
+    printf("[%s] %s\n", tag, message);
 }
 
 
@@ -165,6 +181,7 @@ Ret_t computeNextPositions(int pos[x_size][y_size])
 
     // The state argument is optional — you may use sequencer internally
     sequencer.get_new_positions(pos);
+    log_message("debug", "success");
 
     return ret; // SUCCESS
 }
