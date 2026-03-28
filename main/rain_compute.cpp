@@ -3,6 +3,8 @@
 #include <memory>
 #include <string.h>
 #include <algorithm>
+#include <stdio.h>
+#include <cstdint>
 
 #ifdef PLATFORM_ESP32
 #include "esp_timer.h"
@@ -25,20 +27,23 @@ static Sequencer sequencer;
 
 int sequences::test1(int pos[x_size][y_size], int64_t elapsed_us){
 
-    int status = SEQ_INCOMPLETE;
-    int64_t half_time = SEQ_TIME_LIMIT / 2; 
-    int gradient = max_drop_pos / half_time; 
+    // Sequence paramters
+    float half_time = SEQ_TIME_LIMIT / 2; 
+    double gradient = max_drop_pos / half_time; 
+    
     int calc_pos; 
-
+    int status = SEQ_INCOMPLETE;
 
     if (elapsed_us <= half_time){
-        calc_pos = gradient * elapsed_us; 
+        calc_pos = static_cast<int>(gradient * elapsed_us); 
     } else if (elapsed_us <= SEQ_TIME_LIMIT ){
-        calc_pos = max_drop_pos - (gradient * (elapsed_us - half_time));
+        calc_pos = max_drop_pos - static_cast<int>(gradient * (elapsed_us - half_time));
     } else if (elapsed_us > SEQ_TIME_LIMIT){
         calc_pos = min_drop_pos; 
         status = SEQ_COMPLETE;
     }
+
+    log_message("Debug", ("Calculated position: " + std::to_string(calc_pos)).c_str());
 
     std::fill(&pos[0][0], &pos[0][0] + (x_size * y_size), calc_pos);
     
@@ -94,10 +99,16 @@ void Sequencer::update_seq_time()
 
 void Sequencer::get_new_positions(int pos[x_size][y_size])
 {
+    log_message("Debug", "Compute next positions called");
+
     update_seq_time();
+
+    log_message("Debug", ("Sequence time: " + std::to_string(seq_time)).c_str());
 
     // Get pointer to the correct pattern
     seq_ptrs fn = seq_table[seq_state];
+
+    log_message("Debug", ("Current sequence state: " + std::to_string(seq_state)).c_str());
 
     // Run pattern
     int seq_ret = (this->*fn)(pos, seq_time);
@@ -181,9 +192,16 @@ Ret_t computeNextPositions(int pos[x_size][y_size])
 
     // The state argument is optional — you may use sequencer internally
     sequencer.get_new_positions(pos);
-    log_message("debug", "success");
+
+    // Todo: check if the new positions received are considered withiin the bounds of the system
+    // Otherwise, return an error code and log the error.
 
     return ret; // SUCCESS
 }
+
+int testfunc(){
+    return 10;
+}
+
 
 } // end extern "C"

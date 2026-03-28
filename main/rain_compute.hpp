@@ -37,7 +37,8 @@ class sequences {
 public:
     virtual ~sequences() = default;
 
-    /* Moves down to the maximum and then back up */
+    /* All drops move  down to the maximum position and then back up */
+
     int test1(int pos[x_size][y_size], int64_t elapsed_us);
     int pattern2(int pos[x_size][y_size], int64_t elapsed_us);
 };
@@ -82,6 +83,8 @@ extern "C" {
 
 Ret_t initComputeNextPositions();
 Ret_t computeNextPositions(int pos[x_size][y_size]);
+
+int testfunc();
 
 #ifdef __cplusplus
 }
