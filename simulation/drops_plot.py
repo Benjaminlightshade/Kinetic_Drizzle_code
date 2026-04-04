@@ -27,7 +27,7 @@ class Visualizer3D:
 
         self.ax.set_xticks(range(x_size + 1))
         self.ax.set_yticks(range(y_size + 1))
-        # self.ax.set_zticks(range(z_min, z_max + 1, 10))
+        self.ax.set_zticks(range(z_min, z_max + 1, 10))
         # Create ONE scatter object
         self.scatter = self.ax.scatter([], [], [])
 

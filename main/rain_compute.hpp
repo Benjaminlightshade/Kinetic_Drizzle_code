@@ -37,7 +37,7 @@ class sequences {
 public:
     virtual ~sequences() = default;
 
-    /* All drops move  down to the maximum position and then back up */
+    /* All drops move down to the maximum position and then back up with linear speed */
 
     int test1(int pos[x_size][y_size], int64_t elapsed_us);
     int pattern2(int pos[x_size][y_size], int64_t elapsed_us);
@@ -66,6 +66,7 @@ public:
     void update_seq_time();
 
     void get_new_positions(int pos[x_size][y_size]);
+    void get_position_at_time(int pos[x_size][y_size], int64_t time_us, int seq_select);
 };
 
 #endif // __cplusplus
@@ -83,7 +84,7 @@ extern "C" {
 
 Ret_t initComputeNextPositions();
 Ret_t computeNextPositions(int pos[x_size][y_size]);
-
+Ret_t computePositionsWithTime(int pos[x_size][y_size], int64_t time_us, int seq_select = SEQ1);
 int testfunc();
 
 #ifdef __cplusplus

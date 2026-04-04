@@ -21,7 +21,7 @@
 static Sequencer sequencer;
 
 // Constants //
-#define SEQ_TIME_LIMIT 100000000 // 100 seconds per sequence
+#define SEQ_TIME_LIMIT 100000000 // 100 seconds per sequence (in microseconds)
 
 // Sequences class methods //
 
@@ -121,6 +121,16 @@ void Sequencer::get_new_positions(int pos[x_size][y_size])
 
 }
 
+// For testing patterns using custom time inputs. 
+void Sequencer::get_position_at_time(int pos[x_size][y_size], int64_t time_us, int seq_select) {
+    seq_state = seq_select;
+
+    log_message("Debug", ("Sequence time: " + std::to_string(time_us)).c_str());
+
+    seq_ptrs fn = seq_table[seq_state];
+    int seq_ret = (this->*fn)(pos, time_us);
+
+}
 
 // Timing functions selected by how the unit is compiled
 #ifdef PLATFORM_ESP32
@@ -203,5 +213,12 @@ int testfunc(){
     return 10;
 }
 
+Ret_t computePositionsWithTime(int pos[x_size][y_size], int64_t time_us, int seq_select)
+{
+    Ret_t ret = SUCCESS;
+
+    sequencer.get_position_at_time(pos, time_us, seq_select);
+    return ret;
+}
 
 } // end extern "C"
