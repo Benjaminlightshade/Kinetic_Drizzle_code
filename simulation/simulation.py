@@ -92,12 +92,12 @@ def main():
     # Allocate buffer
     pos = PosArray()
 
-    # Run the simulation based on actual time or simulated time.
+    ### Uncomment one of the following to run the desired simulation mode ###
 
+    # Run the simulation based on actual time or simulated time.
     # timed_run(pos, lib)
 
     # Simulated run with custom time inputs for testing patterns.
-
     simulated_run(pos, lib)
 
 
