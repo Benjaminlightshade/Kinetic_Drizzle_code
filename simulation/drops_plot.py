@@ -7,8 +7,8 @@ import time
 
 x_size = 4
 y_size = 8
-z_upper_limit = 100
-z_lower_limit = -10
+z_upper_limit = 0
+z_lower_limit = 10000
 inverted = False
 
 class Visualizer3D:
@@ -27,7 +27,7 @@ class Visualizer3D:
 
         self.ax.set_xticks(range(x_size + 1))
         self.ax.set_yticks(range(y_size + 1))
-        self.ax.set_zticks(range(z_min, z_max + 1, 10))
+        # self.ax.set_zticks(range(z_min, z_max + 1, 10))
         # Create ONE scatter object
         self.scatter = self.ax.scatter([], [], [])
 
@@ -42,7 +42,7 @@ class Visualizer3D:
 
         xs, ys, zs = zip(*frame_data)
 
-        # Update scatter data (this is the key)
+        # Update scatter data
         self.scatter._offsets3d = (xs, ys, zs)
 
         self.fig.canvas.draw_idle()
@@ -50,13 +50,13 @@ class Visualizer3D:
 
 
 ### Example usage ###
-viz = Visualizer3D()
+# viz = Visualizer3D()
 
-while True:
-    viz.update([(0, 0, 0), (1, 2, 30), (2, 4, 60), (3, 6, 90)])
-    time.sleep(2)
-    viz.update([(0, 1, 10), (1, 3, 40), (2, 5, 70), (3, 7, 100)])
-    time.sleep(2)
+# while True:
+#     viz.update([(0, 0, 0), (1, 2, 30), (2, 4, 60), (3, 6, 90)])
+#     time.sleep(2)
+#     viz.update([(0, 1, 10), (1, 3, 40), (2, 5, 70), (3, 7, 100)])
+#     time.sleep(2)
 
 
 

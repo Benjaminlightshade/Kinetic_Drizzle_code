@@ -1,4 +1,5 @@
 import ctypes
+import time
 import numpy as np
 import os
 import sys
@@ -7,7 +8,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
 
-# import drops_plot
+from drops_plot import Visualizer3D
 
 pwd_path = os.getcwd()
 
@@ -44,8 +45,26 @@ lib.initComputeNextPositions()
 # Allocate buffer
 pos = PosArray()
 
-# Run frames
-for i in range(100):
+# Run based on time 
+timetorun = 100           # Time in seconds 
+starttime = time.time()
+elapsed_time = 0
+print("Start time:", time.strftime("%H:%M:%S", time.localtime(starttime)))
+
+viz = Visualizer3D()
+
+while(elapsed_time < timetorun):
+    elapsed_time = time.time() - starttime
+    computeresult = lib.computeNextPositions(pos)
+
     lib.computeNextPositions(pos)
     np_pos = np.ctypeslib.as_array(pos)
-    print("Frame", i, np_pos)
+    viz.update([(x, y, np_pos[x][y]) for x in range(X_SIZE) for y in range(Y_SIZE)])
+
+    print("Time now:", time.strftime("%H:%M:%S", time.localtime()))
+    time.sleep(0.1)
+
+
+
+
+
