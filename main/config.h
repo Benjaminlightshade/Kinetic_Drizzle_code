@@ -1,29 +1,49 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "driver/gpio.h"
-
 // Parameters //
 #define x_size 4
 #define y_size 8
+#define number_of_boards (x_size * y_size / 4)
 
 #define min_time_between_moves 100              // Minimum time between each stepper motor step in us
 
 // Constants //
-#define max_drop_pos 10000
-#define start_drop_pos 0
-#define min_drop_pos -10000
+#define max_drop_pos 10000                      // Drops will be at the bottom position
+#define start_drop_pos 0                        // Drops will start at position 0, when they are at the top
+#define zeroed_drop_pos -50                  // Position when the drop is just above the limit switch
+#define min_drop_pos -10000                     // Maximum that the drops can go up to hit calibration
+
+#define max_steps_per_cycle 10                  // Maximum steps a drop can move in one compute cycle. 
+    // A warning is provided if this is exceeded.                                        
+
 
 // Pins //
-#define rclk_pin GPIO_NUM_22                    // RCLK is the latch pin
-#define rclk_pin_bitmask (1ULL<<rclk_pin)
+#define PIN_NUM_RCLK 22 // Shift register RCLK - latch pin
+#define rclk_pin_bitmask (1ULL<<PIN_NUM_RCLK)
 
-#define PIN_NUM_MISO GPIO_NUM_12
-#define PIN_NUM_MOSI GPIO_NUM_13
-#define PIN_NUM_CLK  GPIO_NUM_14
+#define PIN_NUM_MISO 12 // Shift register MISO 
+#define PIN_NUM_MOSI 13 // Shift register MOSI
+#define PIN_NUM_CLK  14 // Shift register CLK
 
 #define spi_device_hostid SPI2_HOST
 
+#define PIN_NUM_LIMIT_SWITCH 0 // Limit switch pin/
+#define limit_switch_pin_bitmask (1ULL<<PIN_NUM_LIMIT_SWITCH)
 
+#define PI 3.1412
 
-#endif 
+// Global vairables // 
+
+#define DEF_ERROR 0
+#define DEF_SUCCESS 1
+#define DEF_INCOMPLETE 2
+
+// Return values // 
+typedef enum {
+    ERROR = DEF_ERROR,
+    SUCCESS = DEF_SUCCESS,
+    INCOMPLETE = DEF_INCOMPLETE
+} Ret_t; 
+
+#endif
