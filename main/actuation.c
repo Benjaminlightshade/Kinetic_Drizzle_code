@@ -308,25 +308,45 @@ Ret_t calibration(){
 
 	Ret_t status = SUCCESS;
 
-  // Check if any drops have reached the limit switch. 
-  if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == 1){
-    ESP_LOGI("Calibration", "Limit switch triggered before calibration start.");
-    ESP_LOGI("Calibration", "Moving all drops down");
+  int retry_counter = 0;
+  int max_retry = 3; 
+  status = INCOMPLETE;
 
-    for (int x = 0; x < x_size; x++){
-      for (int y = 0; y < y_size; y++){
-        // Move drop down by max_drop_pos steps
-        force_move(x, y, 10);
+  // Start the calibration by ensuring the drops are below the limit switch trigger point.
+  while(status != SUCCESS){
+
+    if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == GPIO_LIMIT_TRIGGERED){
+      ESP_LOGI("Calibration", "Limit switch triggered before calibration start.");
+      ESP_LOGI("Calibration", "Moving all drops down");
+
+      for (int x = 0; x < x_size; x++){
+        for (int y = 0; y < y_size; y++){
+          // Move drop down by max_drop_pos steps
+          force_move(x, y, 10);
+        }
+      }
+
+      // Check if the downward move of the drops have cleared the limit switch being triggered. 
+      if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == GPIO_LIMIT_NOT_TRIGGERED){
+        ESP_LOGI("Calibration", "Limit switch cleared after moving down all drops.");
+        status = SUCCESS;
       }
     }
-    
-    if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == 1){
-      // Limit switch is still triggered despite the moving down the drops. 
-      ESP_LOGE("Calibration", "Limit switch still triggered after move down applied.");
-      return ERROR;
-    } else if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == 0){
-      ESP_LOGI("Calibration", "Limit switch cleared after moving down all drops.");
+
+    if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == GPIO_LIMIT_NOT_TRIGGERED){
+      ESP_LOGI("Calibration", "Ready to start calibration");
+      status = SUCCESS;
+      break;
     }
+
+    // Limit switch is still triggered despite the moving down the drops. 
+    if (retry_counter == max_retry){
+      ESP_LOGE("Calibration", "Limit switch still triggered after multiple move downs applied.");
+      status = ERROR; 
+      return status;
+    }
+
+    retry_counter++;
 
   }
 
@@ -343,14 +363,16 @@ Ret_t calibration(){
         if (gpio_get_level(PIN_NUM_LIMIT_SWITCH) == 1){
           // Limit switch has been triggered. 
           ESP_LOGI("Calibration", "Limit switch triggered at drop (%d, %d).", x, y);
+
+          actual_positions[x][y] = zeroed_drop_pos;
           
+          ESP_LOGI("Calibration", "Moving (%d, %d) to start position", x, y );
+
           // Move to start position. 
-          force_move(x, y, -1*zeroed_drop_pos);
+          force_move(x, y, -1 * zeroed_drop_pos);
           actual_positions[x][y] = start_drop_pos;
           
           status = SUCCESS;
-          ESP_LOGI("Calibration", "Drop (%d, %d) calibrated to position %d.", x, y, actual_positions[x][y]);
-
           break;
         }
       }

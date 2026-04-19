@@ -11,7 +11,7 @@
 // Constants //
 #define max_drop_pos 10000                      // Drops will be at the bottom position
 #define start_drop_pos 0                        // Drops will start at position 0, when they are at the top
-#define zeroed_drop_pos -50                  // Position when the drop is just above the limit switch
+#define zeroed_drop_pos -50                     // Position when the drop is hits the limit switch
 #define min_drop_pos -10000                     // Maximum that the drops can go up to hit calibration
 
 #define max_steps_per_cycle 10                  // Maximum steps a drop can move in one compute cycle. 
@@ -33,11 +33,14 @@
 
 #define PI 3.1412
 
-// Global vairables // 
+// Global constants // 
 
 #define DEF_ERROR 0
 #define DEF_SUCCESS 1
 #define DEF_INCOMPLETE 2
+
+#define GPIO_LIMIT_TRIGGERED 1
+#define GPIO_LIMIT_NOT_TRIGGERED 0
 
 // Return values // 
 typedef enum {
