@@ -17,14 +17,14 @@
 // Global variables //
 TaskHandle_t xMotorTask, xComputeTask = NULL;
 SystemState sys_state;
-ComputePositions computePos;    
+ComputePositions computePos;
 
 // TBC : control task transitions and uses
 void controlTask(void *pvparameter) {
     while (1) {
 
-        // Receive byte from UART
-        const uart_port_t uart_num = UART_NUM_0;
+        
+        const uart_port_t uart_num = UART_COMS;
         uint8_t data[128];
         int length = 0;
         ESP_ERROR_CHECK(uart_get_buffered_data_len(uart_num, (size_t*)&length));
@@ -33,9 +33,6 @@ void controlTask(void *pvparameter) {
         if(length > 0 ){
             ESP_LOGI("ControlTask", "Received %d bytes from UART", length);
             ESP_LOGI("ControlTask", "Data: %.*s", length, data);
-
-            
-
         }
 
 
@@ -147,6 +144,41 @@ void actuatorMotorTask(void *pvparameter){
     }
 }
 
+esp_err_t setup_uart(){
+
+    esp_err_t ret = ESP_OK;
+
+    // Setup UART buffered IO with event queue
+    const int uart_buffer_size = (1024);
+    QueueHandle_t uart_queue;
+    // Install UART driver using an event queue here
+    ret = uart_driver_install(UART_COMS, uart_buffer_size, uart_buffer_size, 10, &uart_queue, 0);
+    if (ret != ESP_OK) {
+        ESP_LOGE("Main", "Failed to install UART driver: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    const uart_port_t uart_num = UART_COMS;
+    uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS,
+        .rx_flow_ctrl_thresh = 122,
+    };
+
+    // Configure UART parameters
+    ret = uart_param_config(uart_num, &uart_config);
+    if (ret != ESP_OK) {
+        ESP_LOGE("Main", "Failed to configure UART parameters");
+        return ret; 
+    }
+
+    return ret;
+}
+
+
 void setup(){
 
     // Startup config
@@ -169,6 +201,12 @@ void setup(){
     ret = init_gpio_limit_switch();
     if (ret != ESP_OK) {
         ESP_LOGE("Main", "Failed to initialize GPIO");
+        return;
+    }
+
+    ret = setup_uart();
+    if (ret != ESP_OK) {
+        ESP_LOGE("Main", "Failed to initialize UART");
         return;
     }
 

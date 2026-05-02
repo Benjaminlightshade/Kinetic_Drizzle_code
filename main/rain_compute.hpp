@@ -84,7 +84,7 @@ extern "C" {
 
 Ret_t initComputeNextPositions();
 Ret_t computeNextPositions(int pos[x_size][y_size]);
-Ret_t computePositionsWithTime(int pos[x_size][y_size], int64_t time_us, int seq_select = SEQ1);
+Ret_t computePositionsWithTime(int pos[x_size][y_size], int64_t time_us, int seq_select);
 int testfunc();
 
 #ifdef __cplusplus

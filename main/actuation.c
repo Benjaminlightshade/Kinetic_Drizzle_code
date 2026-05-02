@@ -34,7 +34,7 @@ esp_err_t init_spi() {
       .max_transfer_sz = 4096,
   };
 
-  ret = spi_bus_initialize(spi_device_hostid, &buscfg, 1);
+  ret = spi_bus_initialize(spi_device_hostid, &buscfg, SPI_DMA_DISABLED);
   if (ret != ESP_OK) {
     ESP_LOGI("SPI", "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
     return ret;
@@ -53,8 +53,6 @@ esp_err_t init_spi() {
     spi_bus_free(SPI1_HOST);
     return ret;
   }
-
-
 
   return ESP_OK;
 }

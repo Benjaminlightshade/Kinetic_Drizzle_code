@@ -22,4 +22,6 @@ typedef enum{
     ERROR_SYS_STATE
 } SystemState;
 
+esp_err_t setup_uart();
+
 #endif
